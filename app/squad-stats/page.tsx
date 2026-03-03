@@ -27,16 +27,16 @@ export default function SquadStatsPage() {
 
         getSquadStats(p)
             .then((res) => {
-                setStats(res || [])
+                setSquadStats(res || [])
                 setLoading(false)
             })
             .catch(() => {
-                setStats([])
+                setSquadStats([])
                 setLoading(false)
             })
     }, [leagueId, split])
 
-    const isEmpty = !loading && stats.length === 0
+    const isEmpty = !loading && squadStats.length === 0
 
     return (
         <div className="min-h-screen bg-background">
@@ -116,7 +116,7 @@ export default function SquadStatsPage() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    stats.map((s, i) => (
+                                    squadStats.map((s, i) => (
                                         <tr
                                             key={i}
                                             className="border-b border-border/50 hover:bg-secondary/20 transition-colors"
