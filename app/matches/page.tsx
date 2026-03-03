@@ -66,6 +66,8 @@ export default function MatchesPage() {
   const results = matchesData.filter((m) => m.home_score !== null && m.home_score !== undefined).length
   const fixtures = matchesData.filter((m) => m.home_score === null || m.home_score === undefined).length
 
+  const displayed = filtered.slice(0, 100);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -145,78 +147,82 @@ export default function MatchesPage() {
               <Calendar className="h-8 w-8 text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground">No matches found</p>
             </div>
-          ) : filtered.map((match) => (
-            <div
-              key={match.id}
-              className="rounded-lg border border-border bg-card p-4 hover:border-border/80 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-4">
-                {/* Left: Date & League */}
-                <div className="flex flex-col gap-1 shrink-0 w-24 sm:w-32">
-                  <span className="text-[10px] font-medium text-primary">{match.league}</span>
-                  <span className="text-[11px] text-muted-foreground">{formatDate(match.match_date)}</span>
-                  {match.gameweek && (
-                    <span className="text-[10px] text-muted-foreground/60">GW {match.gameweek}</span>
-                  )}
-                </div>
+          ) : (
+            <>
+              {displayed.map((match) => (
+                <div
+                  key={match.id}
+                  className="rounded-lg border border-border bg-card p-4 hover:border-border/80 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    {/* Left: Date & League */}
+                    <div className="flex flex-col gap-1 shrink-0 w-24 sm:w-32">
+                      <span className="text-[10px] font-medium text-primary">{match.league}</span>
+                      <span className="text-[11px] text-muted-foreground">{formatDate(match.match_date)}</span>
+                      {match.gameweek && (
+                        <span className="text-[10px] text-muted-foreground/60">GW {match.gameweek}</span>
+                      )}
+                    </div>
 
-                {/* Center: Teams & Score */}
-                <div className="flex-1 flex items-center justify-center gap-3 sm:gap-6 min-w-0">
-                  <div className="flex-1 text-right">
-                    <span className={`text-sm font-semibold truncate block ${match.home_score !== null && (match.home_score ?? 0) > (match.away_score ?? 0)
-                      ? "text-foreground"
-                      : "text-foreground/70"
-                      }`}>
-                      {match.home_team}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {match.home_score !== null ? (
-                      <div className="flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5">
-                        <span className="text-sm font-bold font-mono text-foreground">{match.home_score}</span>
-                        <span className="text-xs text-muted-foreground">-</span>
-                        <span className="text-sm font-bold font-mono text-foreground">{match.away_score}</span>
+                    {/* Center: Teams & Score */}
+                    <div className="flex-1 flex items-center justify-center gap-3 sm:gap-6 min-w-0">
+                      <div className="flex-1 text-right">
+                        <span className={`text-sm font-semibold truncate block ${match.home_score !== null && (match.home_score ?? 0) > (match.away_score ?? 0)
+                          ? "text-foreground"
+                          : "text-foreground/70"
+                          }`}>
+                          {match.home_team}
+                        </span>
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/30 px-3 py-1.5">
-                        <span className="text-xs font-medium text-muted-foreground">vs</span>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {match.home_score !== null ? (
+                          <div className="flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5">
+                            <span className="text-sm font-bold font-mono text-foreground">{match.home_score}</span>
+                            <span className="text-xs text-muted-foreground">-</span>
+                            <span className="text-sm font-bold font-mono text-foreground">{match.away_score}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/30 px-3 py-1.5">
+                            <span className="text-xs font-medium text-muted-foreground">vs</span>
+                          </div>
+                        )}
                       </div>
-                    )}
+
+                      <div className="flex-1 text-left">
+                        <span className={`text-sm font-semibold truncate block ${match.home_score !== null && (match.away_score ?? 0) > (match.home_score ?? 0)
+                          ? "text-foreground"
+                          : "text-foreground/70"
+                          }`}>
+                          {match.away_team}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right: Status */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {match.home_score !== null ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5">
+                          <CheckCircle2 className="h-3 w-3 text-primary" />
+                          <span className="text-[10px] font-medium text-primary">FT</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-info/10 px-2 py-0.5">
+                          <Clock className="h-3 w-3 text-info" />
+                          <span className="text-[10px] font-medium text-info">TBD</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex-1 text-left">
-                    <span className={`text-sm font-semibold truncate block ${match.home_score !== null && (match.away_score ?? 0) > (match.home_score ?? 0)
-                      ? "text-foreground"
-                      : "text-foreground/70"
-                      }`}>
-                      {match.away_team}
-                    </span>
+                  {/* Venue */}
+                  <div className="mt-2 text-[10px] text-muted-foreground/60 text-center">
+                    {match.venue}
                   </div>
                 </div>
-
-                {/* Right: Status */}
-                <div className="flex items-center gap-2 shrink-0">
-                  {match.home_score !== null ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5">
-                      <CheckCircle2 className="h-3 w-3 text-primary" />
-                      <span className="text-[10px] font-medium text-primary">FT</span>
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-info/10 px-2 py-0.5">
-                      <Clock className="h-3 w-3 text-info" />
-                      <span className="text-[10px] font-medium text-info">TBD</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Venue */}
-              <div className="mt-2 text-[10px] text-muted-foreground/60 text-center">
-                {match.venue}
-              </div>
-            </div>
-          ))}
+              ))}
+            </>
+          )}
         </div>
       </main>
       <Footer />
