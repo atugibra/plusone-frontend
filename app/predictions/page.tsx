@@ -5,7 +5,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { predictionsData, wpaTimelineData, weeklyTrends } from "@/lib/football-data"
 import type { Prediction } from "@/lib/football-data"
-import { getTeams, API } from "@/lib/api"
+import { getTeams, getLeagues, API } from "@/lib/api"
 import { Player } from "@/lib/types"
 import { TrendingUp, CheckCircle2, XCircle, ChevronRight, Target, BarChart3, Zap, Info } from "lucide-react"
 import {
@@ -26,15 +26,23 @@ export default function PredictionsPage() {
   const [selected, setSelected] = useState<Prediction>(predictionsData[0])
 
   // Custom Prediction State
+  const [leagues, setLeagues] = useState<Record<string, any>[]>([])
   const [teams, setTeams] = useState<Record<string, any>[]>([])
+  const [selectedLeague, setSelectedLeague] = useState("")
   const [home, setHome] = useState("")
   const [away, setAway] = useState("")
   const [loadingPred, setLoadingPred] = useState(false)
   const [customResult, setCustomResult] = useState<Record<string, any> | null>(null)
 
   useEffect(() => {
-    getTeams({ limit: 500 }).then((data) => setTeams(data || []))
+    getLeagues().then((data) => setLeagues(Array.isArray(data) ? data : []))
+    getTeams({ limit: 1000 }).then((data) => setTeams(Array.isArray(data) ? data : []))
   }, [])
+
+  // Filter teams to selected league
+  const filteredTeams = selectedLeague
+    ? teams.filter((t) => String(t.league_id) === String(selectedLeague))
+    : teams
 
   const handlePredict = async () => {
     if (!home || !away) return
@@ -81,16 +89,33 @@ export default function PredictionsPage() {
         {/* Generate Prediction Feature */}
         <div className="rounded-lg border border-border bg-card p-6 mb-6">
           <h2 className="text-xl font-bold text-foreground mb-4">🔮 Generate Custom Prediction</h2>
+          {/* League Selector */}
+          <div className="mb-4">
+            <label className="text-xs text-muted-foreground mb-1.5 block">Filter by League (optional)</label>
+            <select
+              value={selectedLeague}
+              onChange={e => { setSelectedLeague(e.target.value); setHome(""); setAway("") }}
+              className="w-full sm:w-72 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">All Leagues</option>
+              {leagues.map((l) => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex flex-col sm:flex-row gap-4 items-end">
             <div className="flex-1 w-full">
               <label className="text-xs text-muted-foreground mb-1.5 block">Home Team</label>
-              <input
+              <select
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                list="teams-list"
                 value={home}
                 onChange={e => setHome(e.target.value)}
-                placeholder="e.g. Arsenal"
-              />
+              >
+                <option value="">Select home team...</option>
+                {filteredTeams.map((t) => (
+                  <option key={t.id} value={t.name}>{t.name}</option>
+                ))}
+              </select>
             </div>
             <div className="pb-2 text-sm font-bold text-muted-foreground">VS</div>
             <div className="flex-1 w-full">
