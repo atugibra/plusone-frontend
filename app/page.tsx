@@ -29,19 +29,46 @@ export default function DashboardPage() {
   const [standings, setStandings] = useState<any[]>([])
   const [health, setHealth] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [matchCount, setMatchCount] = useState(0)
+  const [playerCount, setPlayerCount] = useState(0)
 
   useEffect(() => {
     Promise.all([
-      getLeagues().then(setLeagues).catch(() => { }),
-      getMatches({ limit: 20 }).then(res => setMatches(res.matches || [])).catch(() => { }),
-      getPlayers({ limit: 20 }).then(res => setPlayers(res.players || [])).catch(() => { }),
-      getStandings({ limit: 20 }).then(res => setStandings(res.standings || [])).catch(() => { }),
+      getLeagues().then(res => setLeagues(Array.isArray(res) ? res : [])).catch(() => { }),
+      // Fetch recent results (with scores)
+      getMatches({ limit: 6, has_score: 'true' }).then(res => {
+        const arr = Array.isArray(res) ? res : []
+        setMatches(arr)
+      }).catch(() => { }),
+      // Fetch upcoming fixtures for count
+      getMatches({ limit: 1, has_score: 'false' }).then(() => { }).catch(() => { }),
+      // Use larger limits for total counts
+      getPlayers({ limit: 5 }).then(res => {
+        const arr = Array.isArray(res) ? res : []
+        setPlayers(arr)
+      }).catch(() => { }),
+      getStandings({ limit: 6 }).then(res => {
+        const arr = Array.isArray(res) ? res : []
+        setStandings(arr)
+      }).catch(() => { }),
       getHealth().then(setHealth).catch(() => setHealth({ status: 'unhealthy' }))
     ]).finally(() => setLoading(false))
   }, [])
 
-  const recentMatches = matches.filter((m) => m.status === 'Completed').slice(0, 4)
-  const upcomingMatches = matches.filter((m) => m.status !== 'Completed').slice(0, 4)
+  // Fetch total counts separately
+  useEffect(() => {
+    getMatches({ limit: 1 }).then(res => {
+      // We can't get total count from paginated API, show available data
+      setMatchCount(Array.isArray(res) ? res.length : 0)
+    }).catch(() => { })
+    getPlayers({ limit: 500 }).then(res => {
+      setPlayerCount(Array.isArray(res) ? res.length : 0)
+    }).catch(() => { })
+  }, [])
+
+  // Recent results: matches with scores, upcoming: without scores
+  const recentMatches = matches.filter((m) => m.home_score !== null && m.home_score !== undefined).slice(0, 4)
+  const upcomingMatches = matches.filter((m) => m.home_score === null || m.home_score === undefined).slice(0, 4)
   const topScorers = [...players].sort((a, b) => (b.goals || 0) - (a.goals || 0)).slice(0, 5)
   const topStandings = standings.slice(0, 6)
 
@@ -97,15 +124,15 @@ export default function DashboardPage() {
           <KpiCard
             icon={Calendar}
             label="Matches"
-            value={loading ? "-" : String(matches.length * 10)} // Approximation for display if paginated
-            sub={`${matches.filter((m) => m.status === 'Completed').length} recent loaded`}
+            value={loading ? "-" : String(matchCount || matches.length)}
+            sub={`${recentMatches.length} recent results`}
             href="/matches"
           />
           <KpiCard
             icon={Users}
             label="Players"
-            value={loading ? "-" : String(players.length * 5)} // Approximation
-            sub={`${new Set(players.map((p) => p.league)).size} leagues loaded`}
+            value={loading ? "-" : String(playerCount || players.length)}
+            sub={`${players.length} loaded`}
             href="/players"
           />
           <KpiCard
@@ -149,10 +176,10 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {topStandings.map((row) => (
-                    <tr key={row.team} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
+                  {topStandings.map((row, idx) => (
+                    <tr key={row.team || idx} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
                       <td className="px-3 py-2 text-center text-xs font-bold font-mono text-muted-foreground">{row.rank || idx + 1}</td>
-                      <td className="px-3 py-2 text-sm font-semibold text-foreground">{row.team_id || row.team}</td>
+                      <td className="px-3 py-2 text-sm font-semibold text-foreground">{row.team}</td>
                       <td className="px-2 py-2 text-center text-xs font-mono text-muted-foreground hidden sm:table-cell">{row.matches_played || 0}</td>
                       <td className="px-2 py-2 text-center text-xs font-mono text-muted-foreground hidden sm:table-cell">{row.wins || 0}</td>
                       <td className="px-2 py-2 text-center text-xs font-mono text-muted-foreground hidden sm:table-cell">{row.draws || 0}</td>
