@@ -13,9 +13,9 @@ const navLinks = [
   { href: "/squad-stats", label: "Squad Stats", icon: Shield },
   { href: "/players", label: "Players", icon: Users },
   { href: "/predictions", label: "Predictions", icon: TrendingUp },
-  { href: "/h2h", label: "Head to Head", icon: Zap },
+  { href: "/head-to-head", label: "Head to Head", icon: Zap },
   { href: "/sync", label: "Sync / Data", icon: RefreshCw },
-  { href: "/home-away", label: "home-away Split", icon: Activity },
+  { href: "/home-away-split", label: "Home-Away Split", icon: Activity },
 ]
 
 export function Header() {
@@ -48,8 +48,8 @@ export function Header() {
                   key={link.href}
                   href={link.href}
                   className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                     }`}
                 >
                   <link.icon className="h-3.5 w-3.5" />
@@ -99,8 +99,8 @@ export function Header() {
                     href={link.href}
                     onClick={() => setMobileOpen(false)}
                     className={`flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                       }`}
                   >
                     <link.icon className="h-4 w-4" />
