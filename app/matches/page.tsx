@@ -19,10 +19,15 @@ export default function MatchesPage() {
 
   useEffect(() => {
     Promise.all([
-      getMatches({ limit: 500 }),
+      // Fetch past results (matches with scores) sorted by date DESC
+      getMatches({ limit: 500, has_score: "true" }),
+      // Fetch upcoming fixtures (matches without scores) sorted by date ASC 
+      getMatches({ limit: 500, has_score: "false" }),
       getLeagues()
-    ]).then(([matchesRes, leaguesRes]) => {
-      setMatchesData(matchesRes || [])
+    ]).then(([resultsRes, fixturesRes, leaguesRes]) => {
+      // Combine both - results first then fixtures
+      const combined = [...(resultsRes || []), ...(fixturesRes || [])]
+      setMatchesData(combined)
       setLeagues(leaguesRes || [])
     }).catch(console.error)
       .finally(() => setLoading(false))
@@ -30,8 +35,8 @@ export default function MatchesPage() {
 
   const filtered = useMemo(() => {
     let data = [...matchesData]
-    if (tab === "results") data = data.filter((m) => m.home_score !== null)
-    if (tab === "fixtures") data = data.filter((m) => m.home_score === null)
+    if (tab === "results") data = data.filter((m) => m.home_score !== null && m.home_score !== undefined)
+    if (tab === "fixtures") data = data.filter((m) => m.home_score === null || m.home_score === undefined)
     if (leagueFilter) data = data.filter((m) => m.league === leagueFilter)
     if (search) {
       const q = search.toLowerCase()
@@ -42,11 +47,18 @@ export default function MatchesPage() {
           (m.venue || "").toLowerCase().includes(q)
       )
     }
-    return data.sort((a, b) => (b.match_date || "").localeCompare(a.match_date || ""))
+    // Results sorted newest first, fixtures sorted soonest first
+    return data.sort((a, b) => {
+      const hasScoreA = a.home_score !== null && a.home_score !== undefined
+      const hasScoreB = b.home_score !== null && b.home_score !== undefined
+      if (hasScoreA && hasScoreB) return (b.match_date || "").localeCompare(a.match_date || "")
+      if (!hasScoreA && !hasScoreB) return (a.match_date || "").localeCompare(b.match_date || "")
+      return hasScoreA ? -1 : 1
+    })
   }, [tab, leagueFilter, search, matchesData])
 
-  const results = matchesData.filter((m) => m.home_score !== null).length
-  const fixtures = matchesData.filter((m) => m.home_score === null).length
+  const results = matchesData.filter((m) => m.home_score !== null && m.home_score !== undefined).length
+  const fixtures = matchesData.filter((m) => m.home_score === null || m.home_score === undefined).length
 
   return (
     <div className="min-h-screen bg-background">
