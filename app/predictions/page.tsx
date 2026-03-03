@@ -120,13 +120,16 @@ export default function PredictionsPage() {
             <div className="pb-2 text-sm font-bold text-muted-foreground">VS</div>
             <div className="flex-1 w-full">
               <label className="text-xs text-muted-foreground mb-1.5 block">Away Team</label>
-              <input
+              <select
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                list="teams-list"
                 value={away}
                 onChange={e => setAway(e.target.value)}
-                placeholder="e.g. Chelsea"
-              />
+              >
+                <option value="">Select away team...</option>
+                {filteredTeams.filter((t) => t.name !== home).map((t) => (
+                  <option key={t.id} value={t.name}>{t.name}</option>
+                ))}
+              </select>
             </div>
             <button
               onClick={handlePredict}
@@ -137,9 +140,6 @@ export default function PredictionsPage() {
               {loadingPred ? "Predicting..." : "Predict"}
             </button>
           </div>
-          <datalist id="teams-list">
-            {teams.map(t => <option key={t.id} value={t.name} />)}
-          </datalist>
 
           {/* Custom Prediction Result */}
           {customResult && (
