@@ -5,7 +5,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { getMatches, getLeagues } from "@/lib/api"
 import { Match, League } from "@/lib/types"
-import { Calendar, Filter, Search, CheckCircle2, Clock } from "lucide-react"
+import { Calendar, Filter, Search, CheckCircle2, Clock, X } from "lucide-react"
 
 type TabType = "all" | "results" | "fixtures"
 
@@ -13,6 +13,8 @@ export default function MatchesPage() {
   const [tab, setTab] = useState<TabType>("all")
   const [leagueFilter, setLeagueFilter] = useState("")
   const [search, setSearch] = useState("")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
   const [matchesData, setMatchesData] = useState<Match[]>([])
   const [leagues, setLeagues] = useState<League[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,6 +49,9 @@ export default function MatchesPage() {
           (m.venue || "").toLowerCase().includes(q)
       )
     }
+    // Date range filter
+    if (dateFrom) data = data.filter((m) => (m.match_date || "") >= dateFrom)
+    if (dateTo) data = data.filter((m) => (m.match_date || "") <= dateTo)
     // Results sorted newest first, fixtures sorted soonest first
     return data.sort((a, b) => {
       const hasScoreA = a.home_score !== null && a.home_score !== undefined
@@ -89,7 +94,7 @@ export default function MatchesPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 flex-wrap">
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <input
@@ -114,6 +119,34 @@ export default function MatchesPage() {
                 </option>
               ))}
             </select>
+          </div>
+          {/* Date Range Calendar */}
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              title="From date"
+              className="bg-transparent text-xs text-foreground focus:outline-none w-[110px]"
+            />
+            <span className="text-muted-foreground text-xs">→</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              title="To date"
+              className="bg-transparent text-xs text-foreground focus:outline-none w-[110px]"
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(""); setDateTo("") }}
+                className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
+                title="Clear date filter"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
           </div>
         </div>
 
