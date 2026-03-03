@@ -1,11 +1,18 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { getStandings, getLeagues, getSeasons } from "@/lib/api"
 import { Standing, League, Season } from "@/lib/types"
-import { Filter, ChevronRight, Trophy, ArrowUpDown } from "lucide-react"
+import { Filter, ChevronRight, Trophy } from "lucide-react"
+
+// The only league that shows previous seasons data
+const LEAGUES_WITH_HISTORY = ["2. bundesliga", "2. Bundesliga", "bundesliga 2", "2 bundesliga"]
+
+function isBundesliga2(leagueName: string) {
+    return LEAGUES_WITH_HISTORY.some(k => leagueName?.toLowerCase().includes(k.toLowerCase()))
+}
 
 export default function StandingsPage() {
     const [standings, setStandings] = useState<Standing[]>([])
@@ -21,15 +28,21 @@ export default function StandingsPage() {
     }, [])
 
     useEffect(() => {
-        if (leagueId) {
-            getSeasons({ league_id: leagueId })
-                .then((res) => setSeasons(res || []))
-                .catch(() => setSeasons([]))
-        } else {
-            getSeasons()
-                .then((res) => setSeasons(res || []))
-                .catch(() => setSeasons([]))
-        }
+        const params: any = leagueId ? { league_id: leagueId } : {}
+        getSeasons(params)
+            .then((res) => {
+                const raw: Season[] = res || []
+                // Deduplicate by season label — keep only unique season strings
+                const seen = new Set<string>()
+                const unique = raw.filter((s) => {
+                    const key = `${s.season}`
+                    if (seen.has(key)) return false
+                    seen.add(key)
+                    return true
+                })
+                setSeasons(unique)
+            })
+            .catch(() => setSeasons([]))
     }, [leagueId])
 
     useEffect(() => {
@@ -49,10 +62,18 @@ export default function StandingsPage() {
             })
     }, [leagueId, seasonId])
 
-    const current = standings.filter((r) => r.is_current)
-    const previous = standings.filter((r) => !r.is_current)
+    // Determine selected league name for history decision
+    const selectedLeagueName = useMemo(() => {
+        if (!leagueId) return ""
+        return leagues.find((l) => String(l.id) === String(leagueId))?.name || ""
+    }, [leagueId, leagues])
 
-    const prevGroups = previous.reduce((acc, row) => {
+    const showHistory = !leagueId || isBundesliga2(selectedLeagueName)
+
+    const current = standings.filter((r) => r.is_current)
+    const previous = showHistory ? standings.filter((r) => !r.is_current) : []
+
+    const prevGroups = previous.reduce((acc: Record<string, Standing[]>, row) => {
         const key = `${row.league} — ${row.season}`
         acc[key] = acc[key] || []
         acc[key].push(row)
@@ -103,14 +124,19 @@ export default function StandingsPage() {
                             disabled={seasons.length === 0}
                             className="appearance-none rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 w-full sm:w-auto min-w-[150px]"
                         >
-                            <option value="">All Seasons</option>
+                            <option value="">Current Season</option>
                             {seasons.map((s) => (
                                 <option key={s.season_id} value={s.season_id}>
-                                    {s.season} {s.is_current ? " ★ Current" : ""}
+                                    {s.season} {s.is_current ? " ★" : ""}
                                 </option>
                             ))}
                         </select>
                     </div>
+                    {leagueId && !showHistory && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/50 rounded-lg px-3 py-2">
+                            <span>Historical data available for 2. Bundesliga only</span>
+                        </div>
+                    )}
                 </div>
 
                 {loading && (
@@ -138,8 +164,8 @@ export default function StandingsPage() {
                     </div>
                 )}
 
-                {/* Previous Seasons */}
-                {Object.keys(prevGroups).length > 0 && (
+                {/* Previous Seasons — only for 2. Bundesliga */}
+                {showHistory && Object.keys(prevGroups).length > 0 && (
                     <div>
                         {current.length > 0 && (
                             <div className="flex items-center gap-4 mb-6">
@@ -153,7 +179,7 @@ export default function StandingsPage() {
 
                         <div className="flex flex-col gap-4">
                             {Object.entries(prevGroups).map(([key, rows]) => (
-                                <PreviousSeasonGroup key={key} label={key} rows={rows as any[]} />
+                                <PreviousSeasonGroup key={key} label={key} rows={rows} />
                             ))}
                         </div>
                     </div>
