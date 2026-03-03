@@ -24,4 +24,5 @@ export const getSquadStats = (params: Record<string, any> = {}) => req(`/api/squ
 export const getPlayers = (params: Record<string, any> = {}) => req(`/api/players?${new URLSearchParams(params as any)}`);
 export const getTopScorers = (params: Record<string, any> = {}) => req(`/api/players/top-scorers?${new URLSearchParams(params as any)}`);
 export const getHealth = () => req('/api/health');
+export const getVenueStats = (params: Record<string, any> = {}) => req(`/api/venue-stats?${new URLSearchParams(params as any)}`);
 export const syncAll = (payload: any) => req('/api/sync/all', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });

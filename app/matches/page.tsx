@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer"
 import { getMatches, getLeagues } from "@/lib/api"
 import { Match, League } from "@/lib/types"
 import { Calendar, Filter, Search, CheckCircle2, Clock, X } from "lucide-react"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
 
 type TabType = "all" | "results" | "fixtures"
 
@@ -121,32 +122,15 @@ export default function MatchesPage() {
             </select>
           </div>
           {/* Date Range Calendar */}
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5">
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              title="From date"
-              className="bg-transparent text-xs text-foreground focus:outline-none w-[110px]"
+          <div className="flex items-center gap-2">
+            <DateRangePicker
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateChange={(from, to) => {
+                setDateFrom(from)
+                setDateTo(to)
+              }}
             />
-            <span className="text-muted-foreground text-xs">→</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              title="To date"
-              className="bg-transparent text-xs text-foreground focus:outline-none w-[110px]"
-            />
-            {(dateFrom || dateTo) && (
-              <button
-                onClick={() => { setDateFrom(""); setDateTo("") }}
-                className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
-                title="Clear date filter"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
           </div>
         </div>
 
