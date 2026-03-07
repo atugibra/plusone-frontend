@@ -3,32 +3,51 @@
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { getTeams, getLeagues, getPredictionStatus, trainPredictionModel, predictMatchById, getPredictionFixtures, getPredictionResults, getPredictionAccuracy, API } from "@/lib/api"
-import { TrendingUp, CheckCircle2, XCircle, ChevronRight, Target, BarChart3, Zap, Info, Brain, RefreshCw, Play, AlertCircle, Cpu, Calendar } from "lucide-react"
 import {
-  AreaChart,
-  Area,
+  getTeams,
+  getLeagues,
+  getPredictionStatus,
+  trainPredictionModel,
+  predictMatchById,
+  getPredictionFixtures,
+  getPredictionResults,
+  getPredictionAccuracy,
+  API,
+} from "@/lib/api"
+import {
+  TrendingUp,
+  ChevronRight,
+  Target,
+  BarChart3,
+  Zap,
+  Info,
+  Brain,
+  RefreshCw,
+  Play,
+  AlertCircle,
+  Cpu,
+  Calendar,
+} from "lucide-react"
+import {
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
   BarChart,
   Bar,
   Cell,
 } from "recharts"
 
 export default function PredictionsPage() {
-  // Live DB results (replaces hardcoded predictionsData)
+  // ── State ──────────────────────────────────────────────────────────────────
+
   const [liveResults, setLiveResults] = useState<any[]>([])
   const [resultsLoading, setResultsLoading] = useState(true)
   const [selected, setSelected] = useState<any | null>(null)
 
-  // Weekly accuracy (replaces hardcoded weeklyTrends)
   const [weeklyTrends, setWeeklyTrends] = useState<any[]>([])
 
-  // Custom Prediction State
   const [leagues, setLeagues] = useState<Record<string, any>[]>([])
   const [teams, setTeams] = useState<Record<string, any>[]>([])
   const [selectedLeague, setSelectedLeague] = useState("")
@@ -37,7 +56,6 @@ export default function PredictionsPage() {
   const [loadingPred, setLoadingPred] = useState(false)
   const [customResult, setCustomResult] = useState<Record<string, any> | null>(null)
 
-  // ML Engine State
   const [engineStatus, setEngineStatus] = useState<Record<string, any> | null>(null)
   const [engineLoading, setEngineLoading] = useState(true)
   const [training, setTraining] = useState(false)
@@ -48,6 +66,8 @@ export default function PredictionsPage() {
   const [fixtureResult, setFixtureResult] = useState<Record<string, any> | null>(null)
   const [predictingFixture, setPredictingFixture] = useState<number | null>(null)
   const [fixtureLeague, setFixtureLeague] = useState("")
+
+  // ── Effects ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     getLeagues().then((data) => setLeagues(Array.isArray(data) ? data : []))
@@ -72,6 +92,8 @@ export default function PredictionsPage() {
       .then((data) => setWeeklyTrends(Array.isArray(data) ? data : []))
       .catch(() => setWeeklyTrends([]))
   }, [])
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   const handleTrain = async () => {
     setTraining(true)
@@ -105,14 +127,6 @@ export default function PredictionsPage() {
     setPredictingFixture(null)
   }
 
-  const displayedFixtures = fixtureLeague
-    ? fixtures.filter((f: any) => String(f.league_id) === fixtureLeague)
-    : fixtures
-
-  const filteredTeams = selectedLeague
-    ? teams.filter((t: any) => String(t.league_id) === String(selectedLeague))
-    : teams
-
   const handlePredict = async () => {
     if (!home || !away) return
     setLoadingPred(true)
@@ -130,14 +144,27 @@ export default function PredictionsPage() {
     setLoadingPred(false)
   }
 
+  // ── Derived values ─────────────────────────────────────────────────────────
+
+  const displayedFixtures = fixtureLeague
+    ? fixtures.filter((f: any) => String(f.league_id) === fixtureLeague)
+    : fixtures
+
+  const filteredTeams = selectedLeague
+    ? teams.filter((t: any) => String(t.league_id) === String(selectedLeague))
+    : teams
+
   const completed = liveResults.filter((m: any) => m.home_score !== null)
   const correctCount = completed.filter((m: any) => m.home_score !== m.away_score).length
   const accuracy = completed.length > 0 ? Math.round((correctCount / completed.length) * 100) : 0
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="mx-auto max-w-[1280px] px-4 lg:px-6 py-6">
+
         {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-xl font-bold text-foreground text-balance">Match Predictions</h1>
@@ -148,14 +175,25 @@ export default function PredictionsPage() {
 
         {/* Stat Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          <StatCard icon={Target} label="Model Accuracy" value={engineStatus?.cv_accuracy ? `${Math.round(engineStatus.cv_accuracy * 100)}%` : `${accuracy}%`} sub={engineStatus?.n_samples ? `${engineStatus.n_samples} matches trained` : `${correctCount}/${completed.length} correct`} />
+          <StatCard
+            icon={Target}
+            label="Model Accuracy"
+            value={engineStatus?.cv_accuracy ? `${Math.round(engineStatus.cv_accuracy * 100)}%` : `${accuracy}%`}
+            sub={engineStatus?.n_samples ? `${engineStatus.n_samples} matches trained` : `${correctCount}/${completed.length} correct`}
+          />
           <StatCard icon={TrendingUp} label="Upcoming Fixtures" value={String(fixtures.length)} sub="Ready to predict" />
           <StatCard icon={BarChart3} label="Results in DB" value={String(completed.length)} sub="From Supabase" />
-          <StatCard icon={Cpu} label="ML Engine" value={engineStatus?.model_trained ? "Ready" : "Untrained"} sub={engineStatus?.n_features ? `${engineStatus.n_features} features` : "Not trained yet"} />
+          <StatCard
+            icon={Cpu}
+            label="ML Engine"
+            value={engineStatus?.model_trained ? "Ready" : "Untrained"}
+            sub={engineStatus?.n_features ? `${engineStatus.n_features} features` : "Not trained yet"}
+          />
         </div>
 
-        {/* ML Prediction Engine Section */}
+        {/* ── ML Prediction Engine ── */}
         <div className="rounded-lg border border-border bg-card mb-6 overflow-hidden">
+
           {/* Engine Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-b border-border">
             <div className="flex items-center gap-3">
@@ -176,12 +214,15 @@ export default function PredictionsPage() {
                   </span>
                   {engineStatus.cv_accuracy && (
                     <span className="text-xs text-muted-foreground">
-                      CV Accuracy: <span className="font-bold text-foreground">{Math.round(engineStatus.cv_accuracy * 100)}%</span>
+                      CV Accuracy:{" "}
+                      <span className="font-bold text-foreground">{Math.round(engineStatus.cv_accuracy * 100)}%</span>
                     </span>
                   )}
                   {engineStatus.n_samples > 0 && (
                     <span className="text-xs text-muted-foreground hidden sm:inline">
-                      on <span className="font-bold text-foreground">{engineStatus.n_samples.toLocaleString()}</span> matches
+                      on{" "}
+                      <span className="font-bold text-foreground">{engineStatus.n_samples.toLocaleString()}</span>
+                      {" "}matches
                     </span>
                   )}
                 </>
@@ -202,7 +243,7 @@ export default function PredictionsPage() {
             </div>
           </div>
 
-          {/* Train result banner */}
+          {/* Train Result Banner */}
           {trainResult && (
             <div className={`px-6 py-3 text-sm border-b border-border ${trainResult.success ? "bg-success/5 text-success" : "bg-destructive/5 text-destructive"}`}>
               {trainResult.success
@@ -226,7 +267,6 @@ export default function PredictionsPage() {
                 ))}
               </select>
             </div>
-
             {fixturesLoading ? (
               <p className="text-sm text-muted-foreground animate-pulse py-4 text-center">Loading fixtures…</p>
             ) : displayedFixtures.length === 0 ? (
@@ -236,12 +276,12 @@ export default function PredictionsPage() {
                 {displayedFixtures.map((fx) => (
                   <div
                     key={fx.id}
+                    onClick={() => handlePredictFixture(fx)}
                     className={`flex items-center justify-between rounded-lg border px-4 py-3 transition-colors cursor-pointer ${
                       selectedFixture?.id === fx.id
                         ? "border-primary/50 bg-primary/5"
                         : "border-border hover:border-border/80 hover:bg-secondary/30"
                     }`}
-                    onClick={() => handlePredictFixture(fx)}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-foreground truncate">
@@ -256,11 +296,10 @@ export default function PredictionsPage() {
                       disabled={predictingFixture === fx.id}
                       className="ml-3 flex-shrink-0 inline-flex items-center gap-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50"
                     >
-                      {predictingFixture === fx.id ? (
-                        <RefreshCw className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Play className="h-3 w-3" />
-                      )}
+                      {predictingFixture === fx.id
+                        ? <RefreshCw className="h-3 w-3 animate-spin" />
+                        : <Play className="h-3 w-3" />
+                      }
                       {predictingFixture === fx.id ? "Predicting…" : "Predict"}
                     </button>
                   </div>
@@ -279,6 +318,8 @@ export default function PredictionsPage() {
                 </div>
               ) : (
                 <div className="space-y-5">
+
+                  {/* Match header */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{fixtureResult.match?.league}</p>
@@ -288,8 +329,9 @@ export default function PredictionsPage() {
                     </div>
                     <div className="text-right">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
-                        fixtureResult.confidence === "High" ? "bg-success/10 text-success" :
-                        fixtureResult.confidence === "Medium" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"
+                        fixtureResult.confidence === "High" ? "bg-success/10 text-success"
+                        : fixtureResult.confidence === "Medium" ? "bg-warning/10 text-warning"
+                        : "bg-muted text-muted-foreground"
                       }`}>
                         {fixtureResult.confidence} Confidence
                       </span>
@@ -297,11 +339,13 @@ export default function PredictionsPage() {
                     </div>
                   </div>
 
+                  {/* Predicted Outcome */}
                   <div className="rounded-lg bg-primary/5 border border-primary/20 px-5 py-3 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Predicted Outcome</p>
                     <p className="text-xl font-black text-primary">{fixtureResult.predicted_outcome}</p>
                   </div>
 
+                  {/* Probability Tiles */}
                   <div className="grid grid-cols-3 gap-3">
                     {(["Home Win", "Draw", "Away Win"] as const).map((label, i) => {
                       const keys = ["home_win", "draw", "away_win"] as const
@@ -315,6 +359,7 @@ export default function PredictionsPage() {
                     })}
                   </div>
 
+                  {/* xG */}
                   {fixtureResult.expected_goals && (
                     <div className="rounded-lg border border-border bg-card px-5 py-4">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Expected Goals (xG)</p>
@@ -335,6 +380,7 @@ export default function PredictionsPage() {
                     </div>
                   )}
 
+                  {/* Key Factors & Performance Patterns */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {fixtureResult.key_factors?.length > 0 && (
                       <div className="rounded-lg border border-border bg-card px-4 py-4">
@@ -349,7 +395,6 @@ export default function PredictionsPage() {
                         </ul>
                       </div>
                     )}
-
                     {fixtureResult.team_comparison && (
                       <div className="rounded-lg border border-border bg-card px-4 py-4">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Performance Patterns</p>
@@ -378,6 +423,7 @@ export default function PredictionsPage() {
                     )}
                   </div>
 
+                  {/* H2H */}
                   {fixtureResult.h2h && (fixtureResult.h2h.home_wins + fixtureResult.h2h.draws + fixtureResult.h2h.away_wins) > 0 && (
                     <div className="rounded-lg border border-border bg-card px-4 py-3">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Head to Head History</p>
@@ -385,33 +431,45 @@ export default function PredictionsPage() {
                         <span className="text-primary font-bold">{fixtureResult.h2h.home_wins}W</span>
                         <span className="text-muted-foreground">{fixtureResult.h2h.draws}D</span>
                         <span className="text-info font-bold">{fixtureResult.h2h.away_wins}W</span>
-                        <span className="text-xs text-muted-foreground ml-auto">{fixtureResult.match?.home_team} vs {fixtureResult.match?.away_team}</span>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          {fixtureResult.match?.home_team} vs {fixtureResult.match?.away_team}
+                        </span>
                       </div>
                       {fixtureResult.h2h.last_5?.length > 0 && (
                         <div className="flex gap-1.5 mt-2">
                           {fixtureResult.h2h.last_5.map((r: string, i: number) => (
-                            <span key={i} className={`text-xs font-bold rounded px-1.5 py-0.5 ${
-                              r === "H" ? "bg-primary/10 text-primary" : r === "A" ? "bg-info/10 text-info" : "bg-secondary text-muted-foreground"
-                            }`}>{r === "H" ? "HW" : r === "A" ? "AW" : "D"}</span>
+                            <span
+                              key={i}
+                              className={`text-xs font-bold rounded px-1.5 py-0.5 ${
+                                r === "H" ? "bg-primary/10 text-primary"
+                                : r === "A" ? "bg-info/10 text-info"
+                                : "bg-secondary text-muted-foreground"
+                              }`}
+                            >
+                              {r === "H" ? "HW" : r === "A" ? "AW" : "D"}
+                            </span>
                           ))}
                         </div>
                       )}
                     </div>
                   )}
+
                 </div>
               )}
             </div>
           )}
-        </div>
 
-        {/* Generate Custom Prediction */}
+        </div>
+        {/* /ML Prediction Engine */}
+
+        {/* ── Generate Custom Prediction ── */}
         <div className="rounded-lg border border-border bg-card p-6 mb-6">
           <h2 className="text-xl font-bold text-foreground mb-4">🔮 Generate Custom Prediction</h2>
           <div className="mb-4">
             <label className="text-xs text-muted-foreground mb-1.5 block">Filter by League (optional)</label>
             <select
               value={selectedLeague}
-              onChange={e => { setSelectedLeague(e.target.value); setHome(""); setAway("") }}
+              onChange={(e) => { setSelectedLeague(e.target.value); setHome(""); setAway("") }}
               className="w-full sm:w-72 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="">All Leagues</option>
@@ -424,9 +482,9 @@ export default function PredictionsPage() {
             <div className="flex-1 w-full">
               <label className="text-xs text-muted-foreground mb-1.5 block">Home Team</label>
               <select
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                 value={home}
-                onChange={e => setHome(e.target.value)}
+                onChange={(e) => setHome(e.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="">Select home team...</option>
                 {filteredTeams.map((t) => (
@@ -438,9 +496,9 @@ export default function PredictionsPage() {
             <div className="flex-1 w-full">
               <label className="text-xs text-muted-foreground mb-1.5 block">Away Team</label>
               <select
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                 value={away}
-                onChange={e => setAway(e.target.value)}
+                onChange={(e) => setAway(e.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="">Select away team...</option>
                 {filteredTeams.filter((t) => t.name !== home).map((t) => (
@@ -457,7 +515,6 @@ export default function PredictionsPage() {
               {loadingPred ? "Predicting..." : "Predict"}
             </button>
           </div>
-
           {customResult && (
             <div className={`mt-6 p-4 rounded-lg border ${customResult.error ? "border-destructive bg-destructive/5" : "border-primary/30 bg-primary/5"}`}>
               {customResult.error ? (
@@ -489,19 +546,20 @@ export default function PredictionsPage() {
                       <p className="font-mono text-lg">{Math.round(customResult.away_win_prob * 100)}%</p>
                     </div>
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Predicted Score: {customResult.predicted_score.home} - {customResult.predicted_score.away}</span>
+                  <div className="mt-3 text-xs text-muted-foreground">
+                    Predicted Score: {customResult.predicted_score.home} - {customResult.predicted_score.away}
                   </div>
                 </div>
               )}
             </div>
           )}
         </div>
+        {/* /Generate Custom Prediction */}
 
-        {/* ── Bottom Row: Results list + Match Detail + Weekly Trend ── */}
+        {/* ── Bottom Row: 3 siblings ── */}
         <div className="flex flex-col lg:flex-row gap-6">
 
-          {/* LEFT: Past Results from DB */}
+          {/* SIBLING 1 — Recent Results list */}
           <div className="w-full lg:w-[400px] shrink-0">
             <h2 className="text-sm font-semibold text-foreground mb-3">Recent Results — From Database</h2>
             {resultsLoading ? (
@@ -525,9 +583,9 @@ export default function PredictionsPage() {
               </div>
             )}
           </div>
-          {/* ↑ LEFT column closes here — Match Detail is now a sibling, not a child */}
+          {/* /SIBLING 1 */}
 
-          {/* MIDDLE: Match Detail from DB */}
+          {/* SIBLING 2 — Match Detail */}
           <div className="flex-1 min-w-0">
             {selected ? (
               <>
@@ -554,22 +612,19 @@ export default function PredictionsPage() {
                   <div className="flex gap-2">
                     {selected.home_score !== null && (
                       <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
-                        selected.home_score > selected.away_score
-                          ? "bg-primary/10 text-primary"
-                          : selected.home_score < selected.away_score
-                            ? "bg-info/10 text-info"
-                            : "bg-secondary text-muted-foreground"
+                        selected.home_score > selected.away_score ? "bg-primary/10 text-primary"
+                        : selected.home_score < selected.away_score ? "bg-info/10 text-info"
+                        : "bg-secondary text-muted-foreground"
                       }`}>
                         {selected.home_score > selected.away_score
                           ? `${selected.home_team} Win`
                           : selected.home_score < selected.away_score
-                            ? `${selected.away_team} Win`
-                            : "Draw"}
+                          ? `${selected.away_team} Win`
+                          : "Draw"}
                       </span>
                     )}
                   </div>
                 </div>
-
                 <div className="rounded-lg border border-border bg-card p-4 mb-4">
                   <h3 className="text-sm font-semibold text-foreground mb-1">Win Probability Timeline</h3>
                   <p className="text-xs text-muted-foreground mb-3">Real-time WPA requires a live match data feed</p>
@@ -588,9 +643,10 @@ export default function PredictionsPage() {
               </div>
             )}
           </div>
+          {/* /SIBLING 2 */}
 
-          {/* RIGHT: Weekly Accuracy Trend */}
-          <div className="rounded-lg border border-border bg-card p-4 w-full lg:w-[320px] shrink-0">
+          {/* SIBLING 3 — Weekly Accuracy Trend */}
+          <div className="w-full lg:w-[320px] shrink-0 rounded-lg border border-border bg-card p-4">
             <h3 className="text-sm font-semibold text-foreground mb-1">Weekly Accuracy Trend</h3>
             <p className="text-xs text-muted-foreground mb-4">Model performance by gameweek — from Supabase</p>
             {weeklyTrends.length === 0 ? (
@@ -631,7 +687,11 @@ export default function PredictionsPage() {
                       {weeklyTrends.map((entry: any, i: number) => (
                         <Cell
                           key={i}
-                          fill={entry.accuracy >= 80 ? "oklch(0.65 0.19 145)" : entry.accuracy >= 70 ? "oklch(0.7 0.18 55)" : "oklch(0.55 0.2 27)"}
+                          fill={
+                            entry.accuracy >= 80 ? "oklch(0.65 0.19 145)"
+                            : entry.accuracy >= 70 ? "oklch(0.7 0.18 55)"
+                            : "oklch(0.55 0.2 27)"
+                          }
                         />
                       ))}
                     </Bar>
@@ -640,9 +700,10 @@ export default function PredictionsPage() {
               </div>
             )}
           </div>
+          {/* /SIBLING 3 */}
 
         </div>
-        {/* ↑ flex row closes here */}
+        {/* /Bottom Row */}
 
       </main>
       <Footer />
@@ -650,7 +711,19 @@ export default function PredictionsPage() {
   )
 }
 
-function StatCard({ icon: Icon, label, value, sub }: { icon: React.ElementType; label: string; value: string; sub: string }) {
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: React.ElementType
+  label: string
+  value: string
+  sub: string
+}) {
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-muted-foreground mb-3">
@@ -685,7 +758,9 @@ function ResultCard({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-            homeWon ? "bg-primary/10 text-primary" : awayWon ? "bg-info/10 text-info" : "bg-secondary text-muted-foreground"
+            homeWon ? "bg-primary/10 text-primary"
+            : awayWon ? "bg-info/10 text-info"
+            : "bg-secondary text-muted-foreground"
           }`}>
             {homeWon ? "Home Win" : awayWon ? "Away Win" : "Draw"}
           </span>
@@ -695,7 +770,6 @@ function ResultCard({
         </div>
         <ChevronRight className={`h-3.5 w-3.5 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
       </div>
-
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className={`text-sm font-semibold ${homeWon ? "text-foreground" : "text-foreground/70"}`}>
@@ -711,7 +785,6 @@ function ResultCard({
           </p>
         </div>
       </div>
-
       <p className="text-[10px] text-muted-foreground mt-2">
         {match.league} · {match.match_date ? new Date(match.match_date).toLocaleDateString() : ""}
       </p>
