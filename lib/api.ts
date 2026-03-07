@@ -26,3 +26,23 @@ export const getTopScorers = (params: Record<string, any> = {}) => req(`/api/pla
 export const getHealth = () => req('/api/health');
 export const getVenueStats = (params: Record<string, any> = {}) => req(`/api/venue-stats?${new URLSearchParams(params as any)}`);
 export const syncAll = (payload: any) => req('/api/sync/all', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
+// ── ML Prediction Engine ────────────────────────────────────────────────────
+export const getPredictionStatus = () => req('/api/predictions/status');
+export const trainPredictionModel = (payload: Record<string, any> = {}) =>
+    req('/api/predictions/train', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+export const predictMatchById = (payload: { home_team_id: number; away_team_id: number; league_id: number; season_id: number }) =>
+    req('/api/predictions/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+export const getPredictionFixtures = (params: Record<string, any> = {}) =>
+    req(`/api/predictions/fixtures?${new URLSearchParams(params as any)}`);
+export const getUpcomingPredictions = (params: Record<string, any> = {}) =>
+    req(`/api/predictions/upcoming?${new URLSearchParams(params as any)}`);
+// Legacy rule-based prediction by team name
+export const predictMatch = (payload: { home_team: string; away_team: string; league?: string }) =>
+    req('/api/predictions/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+// Recent completed matches from DB (replaces hardcoded predictionsData)
+export const getPredictionResults = (params: Record<string, any> = {}) =>
+    req(`/api/predictions/results?${new URLSearchParams(params as any)}`);
+// Weekly accuracy trend from real match data (replaces hardcoded weeklyTrends)
+export const getPredictionAccuracy = (params: Record<string, any> = {}) =>
+    req(`/api/predictions/accuracy?${new URLSearchParams(params as any)}`);
