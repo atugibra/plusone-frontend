@@ -52,17 +52,14 @@ export default function PredictionsPage() {
   useEffect(() => {
     getLeagues().then((data) => setLeagues(Array.isArray(data) ? data : []))
     getTeams({ limit: 1000 }).then((data) => setTeams(Array.isArray(data) ? data : []))
-    // Load ML engine status
     getPredictionStatus()
       .then((s) => setEngineStatus(s))
       .catch(() => setEngineStatus(null))
       .finally(() => setEngineLoading(false))
-    // Load upcoming fixtures
     getPredictionFixtures({ limit: 30 })
       .then((r) => setFixtures(Array.isArray(r?.fixtures) ? r.fixtures : []))
       .catch(() => setFixtures([]))
       .finally(() => setFixturesLoading(false))
-    // Load real completed matches from DB
     getPredictionResults({ limit: 30 })
       .then((r) => {
         const results = Array.isArray(r?.results) ? r.results : []
@@ -71,7 +68,6 @@ export default function PredictionsPage() {
       })
       .catch(() => setLiveResults([]))
       .finally(() => setResultsLoading(false))
-    // Load real accuracy trend from DB
     getPredictionAccuracy({ weeks: 9 })
       .then((data) => setWeeklyTrends(Array.isArray(data) ? data : []))
       .catch(() => setWeeklyTrends([]))
@@ -113,7 +109,6 @@ export default function PredictionsPage() {
     ? fixtures.filter((f: any) => String(f.league_id) === fixtureLeague)
     : fixtures
 
-  // Filter teams to selected league
   const filteredTeams = selectedLeague
     ? teams.filter((t: any) => String(t.league_id) === String(selectedLeague))
     : teams
@@ -125,7 +120,7 @@ export default function PredictionsPage() {
       const res = await fetch(`${API}/api/predictions/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ home_team: home, away_team: away })
+        body: JSON.stringify({ home_team: home, away_team: away }),
       })
       const data = await res.json()
       setCustomResult(data)
@@ -135,10 +130,7 @@ export default function PredictionsPage() {
     setLoadingPred(false)
   }
 
-
-  // Derive summary stats from live DB results
   const completed = liveResults.filter((m: any) => m.home_score !== null)
-  // A "correct" prediction: home win when home_score > away_score (simple baseline)
   const correctCount = completed.filter((m: any) => m.home_score !== m.away_score).length
   const accuracy = completed.length > 0 ? Math.round((correctCount / completed.length) * 100) : 0
 
@@ -162,7 +154,7 @@ export default function PredictionsPage() {
           <StatCard icon={Cpu} label="ML Engine" value={engineStatus?.model_trained ? "Ready" : "Untrained"} sub={engineStatus?.n_features ? `${engineStatus.n_features} features` : "Not trained yet"} />
         </div>
 
-        {/* ── ML Prediction Engine Section ────────────────────────────────── */}
+        {/* ML Prediction Engine Section */}
         <div className="rounded-lg border border-border bg-card mb-6 overflow-hidden">
           {/* Engine Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-b border-border">
@@ -244,10 +236,11 @@ export default function PredictionsPage() {
                 {displayedFixtures.map((fx) => (
                   <div
                     key={fx.id}
-                    className={`flex items-center justify-between rounded-lg border px-4 py-3 transition-colors cursor-pointer ${selectedFixture?.id === fx.id
-                      ? "border-primary/50 bg-primary/5"
-                      : "border-border hover:border-border/80 hover:bg-secondary/30"
-                      }`}
+                    className={`flex items-center justify-between rounded-lg border px-4 py-3 transition-colors cursor-pointer ${
+                      selectedFixture?.id === fx.id
+                        ? "border-primary/50 bg-primary/5"
+                        : "border-border hover:border-border/80 hover:bg-secondary/30"
+                    }`}
                     onClick={() => handlePredictFixture(fx)}
                   >
                     <div className="flex-1 min-w-0">
@@ -286,7 +279,6 @@ export default function PredictionsPage() {
                 </div>
               ) : (
                 <div className="space-y-5">
-                  {/* Match Header */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{fixtureResult.match?.league}</p>
@@ -295,22 +287,21 @@ export default function PredictionsPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${fixtureResult.confidence === "High" ? "bg-success/10 text-success" :
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
+                        fixtureResult.confidence === "High" ? "bg-success/10 text-success" :
                         fixtureResult.confidence === "Medium" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"
-                        }`}>
+                      }`}>
                         {fixtureResult.confidence} Confidence
                       </span>
                       <p className="text-xs text-muted-foreground mt-1">{Math.round((fixtureResult.confidence_score || 0) * 100)}% certainty</p>
                     </div>
                   </div>
 
-                  {/* Predicted Outcome */}
                   <div className="rounded-lg bg-primary/5 border border-primary/20 px-5 py-3 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Predicted Outcome</p>
                     <p className="text-xl font-black text-primary">{fixtureResult.predicted_outcome}</p>
                   </div>
 
-                  {/* Probability Tiles */}
                   <div className="grid grid-cols-3 gap-3">
                     {(["Home Win", "Draw", "Away Win"] as const).map((label, i) => {
                       const keys = ["home_win", "draw", "away_win"] as const
@@ -324,7 +315,6 @@ export default function PredictionsPage() {
                     })}
                   </div>
 
-                  {/* xG & Predicted Score */}
                   {fixtureResult.expected_goals && (
                     <div className="rounded-lg border border-border bg-card px-5 py-4">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Expected Goals (xG)</p>
@@ -345,9 +335,7 @@ export default function PredictionsPage() {
                     </div>
                   )}
 
-                  {/* Key Factors & Performance Patterns */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Key Factors */}
                     {fixtureResult.key_factors?.length > 0 && (
                       <div className="rounded-lg border border-border bg-card px-4 py-4">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Key Deciding Factors</p>
@@ -362,7 +350,6 @@ export default function PredictionsPage() {
                       </div>
                     )}
 
-                    {/* Performance Patterns */}
                     {fixtureResult.team_comparison && (
                       <div className="rounded-lg border border-border bg-card px-4 py-4">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Performance Patterns</p>
@@ -391,7 +378,6 @@ export default function PredictionsPage() {
                     )}
                   </div>
 
-                  {/* H2H Summary */}
                   {fixtureResult.h2h && (fixtureResult.h2h.home_wins + fixtureResult.h2h.draws + fixtureResult.h2h.away_wins) > 0 && (
                     <div className="rounded-lg border border-border bg-card px-4 py-3">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Head to Head History</p>
@@ -404,8 +390,9 @@ export default function PredictionsPage() {
                       {fixtureResult.h2h.last_5?.length > 0 && (
                         <div className="flex gap-1.5 mt-2">
                           {fixtureResult.h2h.last_5.map((r: string, i: number) => (
-                            <span key={i} className={`text-xs font-bold rounded px-1.5 py-0.5 ${r === "H" ? "bg-primary/10 text-primary" : r === "A" ? "bg-info/10 text-info" : "bg-secondary text-muted-foreground"
-                              }`}>{r === "H" ? "HW" : r === "A" ? "AW" : "D"}</span>
+                            <span key={i} className={`text-xs font-bold rounded px-1.5 py-0.5 ${
+                              r === "H" ? "bg-primary/10 text-primary" : r === "A" ? "bg-info/10 text-info" : "bg-secondary text-muted-foreground"
+                            }`}>{r === "H" ? "HW" : r === "A" ? "AW" : "D"}</span>
                           ))}
                         </div>
                       )}
@@ -417,10 +404,9 @@ export default function PredictionsPage() {
           )}
         </div>
 
-        {/* Generate Prediction Feature */}
+        {/* Generate Custom Prediction */}
         <div className="rounded-lg border border-border bg-card p-6 mb-6">
           <h2 className="text-xl font-bold text-foreground mb-4">🔮 Generate Custom Prediction</h2>
-          {/* League Selector */}
           <div className="mb-4">
             <label className="text-xs text-muted-foreground mb-1.5 block">Filter by League (optional)</label>
             <select
@@ -472,9 +458,8 @@ export default function PredictionsPage() {
             </button>
           </div>
 
-          {/* Custom Prediction Result */}
           {customResult && (
-            <div className={`mt-6 p-4 rounded-lg border ${customResult.error ? 'border-destructive bg-destructive/5' : 'border-primary/30 bg-primary/5'}`}>
+            <div className={`mt-6 p-4 rounded-lg border ${customResult.error ? "border-destructive bg-destructive/5" : "border-primary/30 bg-primary/5"}`}>
               {customResult.error ? (
                 <div className="flex items-center gap-2 text-destructive">
                   <Info className="h-5 w-5" />
@@ -513,8 +498,10 @@ export default function PredictionsPage() {
           )}
         </div>
 
+        {/* ── Bottom Row: Results list + Match Detail + Weekly Trend ── */}
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Left: Past Results from DB */}
+
+          {/* LEFT: Past Results from DB */}
           <div className="w-full lg:w-[400px] shrink-0">
             <h2 className="text-sm font-semibold text-foreground mb-3">Recent Results — From Database</h2>
             {resultsLoading ? (
@@ -537,77 +524,73 @@ export default function PredictionsPage() {
                 ))}
               </div>
             )}
+          </div>
+          {/* ↑ LEFT column closes here — Match Detail is now a sibling, not a child */}
 
-            {/* Right: Match Detail from DB */}
-            <div className="flex-1 min-w-0">
-              {selected ? (
-                <>
-                  {/* Match Header */}
-                  <div className="rounded-lg border border-border bg-card p-4 mb-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-0.5">{selected.league} · {selected.season}</p>
-                        <h3 className="text-sm font-semibold text-foreground">
-                          {selected.home_team} vs {selected.away_team}
-                        </h3>
+          {/* MIDDLE: Match Detail from DB */}
+          <div className="flex-1 min-w-0">
+            {selected ? (
+              <>
+                <div className="rounded-lg border border-border bg-card p-4 mb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">{selected.league} · {selected.season}</p>
+                      <h3 className="text-sm font-semibold text-foreground">
+                        {selected.home_team} vs {selected.away_team}
+                      </h3>
+                    </div>
+                    {selected.home_score !== null && (
+                      <div className="text-right">
+                        <p className="text-2xl font-black font-mono text-foreground">
+                          {selected.home_score} – {selected.away_score}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {selected.match_date ? new Date(selected.match_date).toLocaleDateString() : ""}
+                          {selected.gameweek ? ` · GW${selected.gameweek}` : ""}
+                        </p>
                       </div>
-                      {selected.home_score !== null && (
-                        <div className="text-right">
-                          <p className="text-2xl font-black font-mono text-foreground">
-                            {selected.home_score} – {selected.away_score}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {selected.match_date ? new Date(selected.match_date).toLocaleDateString() : ""}
-                            {selected.gameweek ? ` · GW${selected.gameweek}` : ""}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Result Badge */}
-                    <div className="flex gap-2">
-                      {selected.home_score !== null && (
-                        <>
-                          <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${selected.home_score > selected.away_score
-                            ? "bg-primary/10 text-primary"
-                            : selected.home_score < selected.away_score
-                              ? "bg-info/10 text-info"
-                              : "bg-secondary text-muted-foreground"
-                            }`}>
-                            {selected.home_score > selected.away_score
-                              ? `${selected.home_team} Win`
-                              : selected.home_score < selected.away_score
-                                ? `${selected.away_team} Win`
-                                : "Draw"}
-                          </span>
-                        </>
-                      )}
-                    </div>
+                    )}
                   </div>
-
-                  {/* WPA Note — real WPA requires live match feed */}
-                  <div className="rounded-lg border border-border bg-card p-4 mb-4">
-                    <h3 className="text-sm font-semibold text-foreground mb-1">Win Probability Timeline</h3>
-                    <p className="text-xs text-muted-foreground mb-3">Real-time WPA requires a live match data feed</p>
-                    <div className="flex items-center justify-center h-40 rounded-lg bg-secondary/20 border border-dashed border-border">
-                      <div className="text-center">
-                        <BarChart3 className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-40" />
-                        <p className="text-sm text-muted-foreground">WPA data not available for stored results</p>
-                        <p className="text-xs text-muted-foreground/60 mt-1">Use the ML Prediction engine above to get pre-match probabilities</p>
-                      </div>
-                    </div>
+                  <div className="flex gap-2">
+                    {selected.home_score !== null && (
+                      <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
+                        selected.home_score > selected.away_score
+                          ? "bg-primary/10 text-primary"
+                          : selected.home_score < selected.away_score
+                            ? "bg-info/10 text-info"
+                            : "bg-secondary text-muted-foreground"
+                      }`}>
+                        {selected.home_score > selected.away_score
+                          ? `${selected.home_team} Win`
+                          : selected.home_score < selected.away_score
+                            ? `${selected.away_team} Win`
+                            : "Draw"}
+                      </span>
+                    )}
                   </div>
-                </>
-              ) : (
-                <div className="rounded-lg border border-border bg-card p-12 text-center text-muted-foreground">
-                  Select a match from the list to view details
                 </div>
-              )}
-            </div>
+
+                <div className="rounded-lg border border-border bg-card p-4 mb-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-1">Win Probability Timeline</h3>
+                  <p className="text-xs text-muted-foreground mb-3">Real-time WPA requires a live match data feed</p>
+                  <div className="flex items-center justify-center h-40 rounded-lg bg-secondary/20 border border-dashed border-border">
+                    <div className="text-center">
+                      <BarChart3 className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-40" />
+                      <p className="text-sm text-muted-foreground">WPA data not available for stored results</p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">Use the ML Prediction engine above to get pre-match probabilities</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-lg border border-border bg-card p-12 text-center text-muted-foreground">
+                Select a match from the list to view details
+              </div>
+            )}
           </div>
 
-          {/* Weekly Accuracy Trend */}
-          <div className="rounded-lg border border-border bg-card p-4">
+          {/* RIGHT: Weekly Accuracy Trend */}
+          <div className="rounded-lg border border-border bg-card p-4 w-full lg:w-[320px] shrink-0">
             <h3 className="text-sm font-semibold text-foreground mb-1">Weekly Accuracy Trend</h3>
             <p className="text-xs text-muted-foreground mb-4">Model performance by gameweek — from Supabase</p>
             {weeklyTrends.length === 0 ? (
@@ -657,9 +640,12 @@ export default function PredictionsPage() {
               </div>
             )}
           </div>
+
         </div>
+        {/* ↑ flex row closes here */}
+
       </main>
-    <Footer />
+      <Footer />
     </div>
   )
 }
@@ -692,17 +678,15 @@ function ResultCard({
   return (
     <button
       onClick={onSelect}
-      className={`w-full text-left rounded-lg border p-4 transition-all ${isSelected
-        ? "border-primary/50 bg-primary/5"
-        : "border-border bg-card hover:border-border/80"
-        }`}
+      className={`w-full text-left rounded-lg border p-4 transition-all ${
+        isSelected ? "border-primary/50 bg-primary/5" : "border-border bg-card hover:border-border/80"
+      }`}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${homeWon ? "bg-primary/10 text-primary"
-            : awayWon ? "bg-info/10 text-info"
-              : "bg-secondary text-muted-foreground"
-            }`}>
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+            homeWon ? "bg-primary/10 text-primary" : awayWon ? "bg-info/10 text-info" : "bg-secondary text-muted-foreground"
+          }`}>
             {homeWon ? "Home Win" : awayWon ? "Away Win" : "Draw"}
           </span>
           {match.gameweek && (
@@ -734,7 +718,6 @@ function ResultCard({
     </button>
   )
 }
-
 
 function StatLine({ label, value }: { label: string; value: string }) {
   return (
