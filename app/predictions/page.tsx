@@ -658,8 +658,7 @@ export default function PredictionsPage() {
             )}
           </div>
         </div>
-    </div>
-    </main>
+      </main>
     <Footer />
     </div>
   )
