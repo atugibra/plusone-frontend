@@ -49,19 +49,6 @@ export default function PredictionsPage() {
   const [predictingFixture, setPredictingFixture] = useState<number | null>(null)
   const [fixtureLeague, setFixtureLeague] = useState("")
 
-  // api helper to poll training-status
-  const pollTrainingStatus = (intervalMs = 3000) => new Promise<void>((resolve) => {
-    const id = setInterval(async () => {
-      try {
-        const s = await fetch(`${API}/api/predictions/training-status`).then(r => r.json())
-        if (s.status === "done" || s.status === "error") {
-          clearInterval(id)
-          resolve()
-        }
-      } catch { /* keep polling */ }
-    }, intervalMs)
-  })
-
   useEffect(() => {
     getLeagues().then((data) => setLeagues(Array.isArray(data) ? data : []))
     getTeams({ limit: 1000 }).then((data) => setTeams(Array.isArray(data) ? data : []))
@@ -94,15 +81,8 @@ export default function PredictionsPage() {
     setTraining(true)
     setTrainResult(null)
     try {
-      // Fire-and-forget: backend returns immediately
       const r = await trainPredictionModel()
-      setTrainResult({ success: true, message: r.message || "Training started…" })
-      // Poll /training-status until done
-      await pollTrainingStatus(3000)
-      // Fetch final result and refresh engine status
-      const statusResp = await fetch(`${API}/api/predictions/training-status`).then(r => r.json())
-      const finalResult = statusResp?.result || {}
-      setTrainResult({ success: finalResult.success ?? true, ...finalResult })
+      setTrainResult(r)
       const s = await getPredictionStatus()
       setEngineStatus(s)
     } catch {
@@ -154,7 +134,6 @@ export default function PredictionsPage() {
     }
     setLoadingPred(false)
   }
-
 
   // Derive summary stats from live DB results
   const completed = liveResults.filter((m: any) => m.home_score !== null)
@@ -533,62 +512,66 @@ export default function PredictionsPage() {
           )}
         </div>
 
+        {/* Bottom Section: Results List + Detail + Chart */}
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left: Past Results from DB */}
-          <div className="w-full lg:w-[400px] shrink-0">
-            <h2 className="text-sm font-semibold text-foreground mb-3">Recent Results — From Database</h2>
-            {resultsLoading ? (
-              <p className="text-sm text-muted-foreground animate-pulse py-8 text-center">Loading results from Supabase…</p>
-            ) : liveResults.length === 0 ? (
-              <div className="rounded-lg border border-border bg-card p-8 text-center">
-                <Calendar className="h-8 w-8 mx-auto mb-3 text-muted-foreground opacity-40" />
-                <p className="text-sm text-muted-foreground">No completed matches in the database yet.</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Sync data first to populate results.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2 lg:max-h-[calc(100vh-320px)] lg:overflow-y-auto lg:pr-1 scrollbar-thin">
-                {liveResults.map((match) => (
-                  <ResultCard
-                    key={match.id}
-                    match={match}
-                    isSelected={selected?.id === match.id}
-                    onSelect={() => setSelected(match)}
-                  />
-                ))}
-              </div>
-            )}
+          <div className="w-full lg:w-[400px] shrink-0 flex flex-col gap-6">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground mb-3">Recent Results — From Database</h2>
+              {resultsLoading ? (
+                <p className="text-sm text-muted-foreground animate-pulse py-8 text-center">Loading results from Supabase…</p>
+              ) : liveResults.length === 0 ? (
+                <div className="rounded-lg border border-border bg-card p-8 text-center">
+                  <Calendar className="h-8 w-8 mx-auto mb-3 text-muted-foreground opacity-40" />
+                  <p className="text-sm text-muted-foreground">No completed matches in the database yet.</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Sync data first to populate results.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 lg:max-h-[calc(100vh-320px)] lg:overflow-y-auto lg:pr-1 scrollbar-thin">
+                  {liveResults.map((match) => (
+                    <ResultCard
+                      key={match.id}
+                      match={match}
+                      isSelected={selected?.id === match.id}
+                      onSelect={() => setSelected(match)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Right: Match Detail from DB */}
-          <div className="flex-1 min-w-0">
-            {selected ? (
-              <>
-                {/* Match Header */}
-                <div className="rounded-lg border border-border bg-card p-4 mb-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">{selected.league} · {selected.season}</p>
-                      <h3 className="text-sm font-semibold text-foreground">
-                        {selected.home_team} vs {selected.away_team}
-                      </h3>
-                    </div>
-                    {selected.home_score !== null && (
-                      <div className="text-right">
-                        <p className="text-2xl font-black font-mono text-foreground">
-                          {selected.home_score} – {selected.away_score}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {selected.match_date ? new Date(selected.match_date).toLocaleDateString() : ""}
-                          {selected.gameweek ? ` · GW${selected.gameweek}` : ""}
-                        </p>
+          {/* Right: Match Detail + Weekly Accuracy */}
+          <div className="flex-1 min-w-0 flex flex-col gap-6">
+            {/* Match Detail from DB */}
+            <div>
+              {selected ? (
+                <>
+                  {/* Match Header */}
+                  <div className="rounded-lg border border-border bg-card p-4 mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-0.5">{selected.league} · {selected.season}</p>
+                        <h3 className="text-sm font-semibold text-foreground">
+                          {selected.home_team} vs {selected.away_team}
+                        </h3>
                       </div>
-                    )}
-                  </div>
+                      {selected.home_score !== null && (
+                        <div className="text-right">
+                          <p className="text-2xl font-black font-mono text-foreground">
+                            {selected.home_score} – {selected.away_score}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {selected.match_date ? new Date(selected.match_date).toLocaleDateString() : ""}
+                            {selected.gameweek ? ` · GW${selected.gameweek}` : ""}
+                          </p>
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Result Badge */}
-                  <div className="flex gap-2">
-                    {selected.home_score !== null && (
-                      <>
+                    {/* Result Badge */}
+                    <div className="flex gap-2">
+                      {selected.home_score !== null && (
                         <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${selected.home_score > selected.away_score
                           ? "bg-primary/10 text-primary"
                           : selected.home_score < selected.away_score
@@ -601,87 +584,86 @@ export default function PredictionsPage() {
                               ? `${selected.away_team} Win`
                               : "Draw"}
                         </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* WPA Note — real WPA requires live match feed */}
-                <div className="rounded-lg border border-border bg-card p-4 mb-4">
-                  <h3 className="text-sm font-semibold text-foreground mb-1">Win Probability Timeline</h3>
-                  <p className="text-xs text-muted-foreground mb-3">Real-time WPA requires a live match data feed</p>
-                  <div className="flex items-center justify-center h-40 rounded-lg bg-secondary/20 border border-dashed border-border">
-                    <div className="text-center">
-                      <BarChart3 className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-40" />
-                      <p className="text-sm text-muted-foreground">WPA data not available for stored results</p>
-                      <p className="text-xs text-muted-foreground/60 mt-1">Use the ML Prediction engine above to get pre-match probabilities</p>
+                      )}
                     </div>
                   </div>
+
+                  {/* WPA Note */}
+                  <div className="rounded-lg border border-border bg-card p-4 mb-4">
+                    <h3 className="text-sm font-semibold text-foreground mb-1">Win Probability Timeline</h3>
+                    <p className="text-xs text-muted-foreground mb-3">Real-time WPA requires a live match data feed</p>
+                    <div className="flex items-center justify-center h-40 rounded-lg bg-secondary/20 border border-dashed border-border">
+                      <div className="text-center">
+                        <BarChart3 className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-40" />
+                        <p className="text-sm text-muted-foreground">WPA data not available for stored results</p>
+                        <p className="text-xs text-muted-foreground/60 mt-1">Use the ML Prediction engine above to get pre-match probabilities</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-lg border border-border bg-card p-12 text-center text-muted-foreground">
+                  Select a match from the list to view details
                 </div>
-              </>
-            ) : (
-              <div className="rounded-lg border border-border bg-card p-12 text-center text-muted-foreground">
-                Select a match from the list to view details
-              </div>
-            )}
+              )}
+            </div>
+
+            {/* Weekly Accuracy Trend */}
+            <div className="rounded-lg border border-border bg-card p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-1">Weekly Accuracy Trend</h3>
+              <p className="text-xs text-muted-foreground mb-4">Model performance by gameweek — from Supabase</p>
+              {weeklyTrends.length === 0 ? (
+                <div className="flex items-center justify-center h-[200px] rounded-lg bg-secondary/20 border border-dashed border-border">
+                  <p className="text-sm text-muted-foreground">No gameweek data yet — sync match data first</p>
+                </div>
+              ) : (
+                <div className="h-[200px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={weeklyTrends} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.01 260)" vertical={false} />
+                      <XAxis
+                        dataKey="week"
+                        tick={{ fontSize: 10, fill: "oklch(0.55 0.01 260)" }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        domain={[0, 100]}
+                        tick={{ fontSize: 10, fill: "oklch(0.55 0.01 260)" }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v: number) => `${v}%`}
+                      />
+                      <Tooltip
+                        content={({ active, payload }: any) => {
+                          if (!active || !payload?.length) return null
+                          const d = payload[0].payload
+                          return (
+                            <div className="rounded-lg border border-border bg-card p-3 shadow-xl">
+                              <p className="text-xs font-semibold text-foreground">{d.week}</p>
+                              <p className="text-xs text-muted-foreground">{d.correct}/{d.predictions} correct ({d.accuracy}%)</p>
+                            </div>
+                          )
+                        }}
+                      />
+                      <Bar dataKey="accuracy" radius={[4, 4, 0, 0]}>
+                        {weeklyTrends.map((entry: any, i: number) => (
+                          <Cell
+                            key={i}
+                            fill={entry.accuracy >= 80 ? "oklch(0.65 0.19 145)" : entry.accuracy >= 70 ? "oklch(0.7 0.18 55)" : "oklch(0.55 0.2 27)"}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Weekly Accuracy Trend */}
-        <div className="rounded-lg border border-border bg-card p-4 mt-6">
-          <h3 className="text-sm font-semibold text-foreground mb-1">Weekly Accuracy Trend</h3>
-          <p className="text-xs text-muted-foreground mb-4">Model performance by gameweek — from Supabase</p>
-          {weeklyTrends.length === 0 ? (
-            <div className="flex items-center justify-center h-[200px] rounded-lg bg-secondary/20 border border-dashed border-border">
-              <p className="text-sm text-muted-foreground">No gameweek data yet — sync match data first</p>
-            </div>
-          ) : (
-            <div className="h-[200px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyTrends} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.01 260)" vertical={false} />
-                  <XAxis
-                    dataKey="week"
-                    tick={{ fontSize: 10, fill: "oklch(0.55 0.01 260)" }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    tick={{ fontSize: 10, fill: "oklch(0.55 0.01 260)" }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v: number) => `${v}%`}
-                  />
-                  <Tooltip
-                    content={({ active, payload }: any) => {
-                      if (!active || !payload?.length) return null
-                      const d = payload[0].payload
-                      return (
-                        <div className="rounded-lg border border-border bg-card p-3 shadow-xl">
-                          <p className="text-xs font-semibold text-foreground">{d.week}</p>
-                          <p className="text-xs text-muted-foreground">{d.correct}/{d.predictions} correct ({d.accuracy}%)</p>
-                        </div>
-                      )
-                    }}
-                  />
-                  <Bar dataKey="accuracy" radius={[4, 4, 0, 0]}>
-                    {weeklyTrends.map((entry: any, i: number) => (
-                      <Cell
-                        key={i}
-                        fill={entry.accuracy >= 80 ? "oklch(0.65 0.19 145)" : entry.accuracy >= 70 ? "oklch(0.7 0.18 55)" : "oklch(0.55 0.2 27)"}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
+      </main>
+      <Footer />
     </div>
-    </main >
-    <Footer />
-    </div >
   )
 }
 
@@ -755,7 +737,6 @@ function ResultCard({
     </button>
   )
 }
-
 
 function StatLine({ label, value }: { label: string; value: string }) {
   return (
