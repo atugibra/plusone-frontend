@@ -25,6 +25,7 @@ import { BarChart, Bar, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, Cartes
 export default function DashboardPage() {
   const [leagues, setLeagues] = useState<any[]>([])
   const [matches, setMatches] = useState<any[]>([])
+  const [fixtures, setFixtures] = useState<any[]>([])  // upcoming fixtures (no score, future date)
   const [players, setPlayers] = useState<any[]>([])
   const [standings, setStandings] = useState<any[]>([])
   const [health, setHealth] = useState<any>(null)
@@ -40,8 +41,10 @@ export default function DashboardPage() {
         const arr = Array.isArray(res) ? res : []
         setMatches(arr)
       }).catch(() => { }),
-      // Fetch upcoming fixtures for count
-      getMatches({ limit: 1, has_score: 'false' }).then(() => { }).catch(() => { }),
+      // Fetch upcoming fixtures (no score AND date in the future)
+      getMatches({ limit: 6, has_score: 'false' }).then(res => {
+        setFixtures(Array.isArray(res) ? res : [])
+      }).catch(() => { }),
       // Use larger limits for total counts
       getPlayers({ limit: 5 }).then(res => {
         const arr = Array.isArray(res) ? res : []
@@ -67,8 +70,8 @@ export default function DashboardPage() {
   }, [])
 
   // Recent results: matches with scores, upcoming: without scores
-  const recentMatches = matches.filter((m) => m.home_score !== null && m.home_score !== undefined).slice(0, 4)
-  const upcomingMatches = matches.filter((m) => m.home_score === null || m.home_score === undefined).slice(0, 4)
+  const recentMatches = matches.slice(0, 4)
+  const upcomingMatches = fixtures.slice(0, 4)
   const topScorers = [...players].sort((a, b) => (b.goals || 0) - (a.goals || 0)).slice(0, 5)
   const topStandings = standings.slice(0, 6)
 
