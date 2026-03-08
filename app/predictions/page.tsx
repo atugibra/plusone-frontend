@@ -3,51 +3,32 @@
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { getTeams, getLeagues, getPredictionStatus, trainPredictionModel, predictMatchById, getPredictionFixtures, getPredictionResults, getPredictionAccuracy, API } from "@/lib/api"
+import { TrendingUp, CheckCircle2, XCircle, ChevronRight, Target, BarChart3, Zap, Info, Brain, RefreshCw, Play, AlertCircle, Cpu, Calendar } from "lucide-react"
 import {
-  getTeams,
-  getLeagues,
-  getPredictionStatus,
-  trainPredictionModel,
-  predictMatchById,
-  getPredictionFixtures,
-  getPredictionResults,
-  getPredictionAccuracy,
-  API,
-} from "@/lib/api"
-import {
-  TrendingUp,
-  ChevronRight,
-  Target,
-  BarChart3,
-  Zap,
-  Info,
-  Brain,
-  RefreshCw,
-  Play,
-  AlertCircle,
-  Cpu,
-  Calendar,
-} from "lucide-react"
-import {
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
   BarChart,
   Bar,
   Cell,
 } from "recharts"
 
 export default function PredictionsPage() {
-  // ── State ──────────────────────────────────────────────────────────────────
-
+  // Live DB results (replaces hardcoded predictionsData)
   const [liveResults, setLiveResults] = useState<any[]>([])
   const [resultsLoading, setResultsLoading] = useState(true)
   const [selected, setSelected] = useState<any | null>(null)
 
+  // Weekly accuracy (replaces hardcoded weeklyTrends)
   const [weeklyTrends, setWeeklyTrends] = useState<any[]>([])
 
+  // Custom Prediction State
   const [leagues, setLeagues] = useState<Record<string, any>[]>([])
   const [teams, setTeams] = useState<Record<string, any>[]>([])
   const [selectedLeague, setSelectedLeague] = useState("")
@@ -56,6 +37,7 @@ export default function PredictionsPage() {
   const [loadingPred, setLoadingPred] = useState(false)
   const [customResult, setCustomResult] = useState<Record<string, any> | null>(null)
 
+  // ML Engine State
   const [engineStatus, setEngineStatus] = useState<Record<string, any> | null>(null)
   const [engineLoading, setEngineLoading] = useState(true)
   const [training, setTraining] = useState(false)
@@ -67,19 +49,33 @@ export default function PredictionsPage() {
   const [predictingFixture, setPredictingFixture] = useState<number | null>(null)
   const [fixtureLeague, setFixtureLeague] = useState("")
 
-  // ── Effects ────────────────────────────────────────────────────────────────
+  // api helper to poll training-status
+  const pollTrainingStatus = (intervalMs = 3000) => new Promise<void>((resolve) => {
+    const id = setInterval(async () => {
+      try {
+        const s = await fetch(`${API}/api/predictions/training-status`).then(r => r.json())
+        if (s.status === "done" || s.status === "error") {
+          clearInterval(id)
+          resolve()
+        }
+      } catch { /* keep polling */ }
+    }, intervalMs)
+  })
 
   useEffect(() => {
     getLeagues().then((data) => setLeagues(Array.isArray(data) ? data : []))
     getTeams({ limit: 1000 }).then((data) => setTeams(Array.isArray(data) ? data : []))
+    // Load ML engine status
     getPredictionStatus()
       .then((s) => setEngineStatus(s))
       .catch(() => setEngineStatus(null))
       .finally(() => setEngineLoading(false))
+    // Load upcoming fixtures
     getPredictionFixtures({ limit: 30 })
       .then((r) => setFixtures(Array.isArray(r?.fixtures) ? r.fixtures : []))
       .catch(() => setFixtures([]))
       .finally(() => setFixturesLoading(false))
+    // Load real completed matches from DB
     getPredictionResults({ limit: 30 })
       .then((r) => {
         const results = Array.isArray(r?.results) ? r.results : []
@@ -88,19 +84,25 @@ export default function PredictionsPage() {
       })
       .catch(() => setLiveResults([]))
       .finally(() => setResultsLoading(false))
+    // Load real accuracy trend from DB
     getPredictionAccuracy({ weeks: 9 })
       .then((data) => setWeeklyTrends(Array.isArray(data) ? data : []))
       .catch(() => setWeeklyTrends([]))
   }, [])
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
-
   const handleTrain = async () => {
     setTraining(true)
     setTrainResult(null)
     try {
+      // Fire-and-forget: backend returns immediately
       const r = await trainPredictionModel()
-      setTrainResult(r)
+      setTrainResult({ success: true, message: r.message || "Training started…" })
+      // Poll /training-status until done
+      await pollTrainingStatus(3000)
+      // Fetch final result and refresh engine status
+      const statusResp = await fetch(`${API}/api/predictions/training-status`).then(r => r.json())
+      const finalResult = statusResp?.result || {}
+      setTrainResult({ success: finalResult.success ?? true, ...finalResult })
       const s = await getPredictionStatus()
       setEngineStatus(s)
     } catch {
@@ -127,6 +129,15 @@ export default function PredictionsPage() {
     setPredictingFixture(null)
   }
 
+  const displayedFixtures = fixtureLeague
+    ? fixtures.filter((f: any) => String(f.league_id) === fixtureLeague)
+    : fixtures
+
+  // Filter teams to selected league
+  const filteredTeams = selectedLeague
+    ? teams.filter((t: any) => String(t.league_id) === String(selectedLeague))
+    : teams
+
   const handlePredict = async () => {
     if (!home || !away) return
     setLoadingPred(true)
@@ -134,7 +145,7 @@ export default function PredictionsPage() {
       const res = await fetch(`${API}/api/predictions/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ home_team: home, away_team: away }),
+        body: JSON.stringify({ home_team: home, away_team: away })
       })
       const data = await res.json()
       setCustomResult(data)
@@ -144,27 +155,17 @@ export default function PredictionsPage() {
     setLoadingPred(false)
   }
 
-  // ── Derived values ─────────────────────────────────────────────────────────
 
-  const displayedFixtures = fixtureLeague
-    ? fixtures.filter((f: any) => String(f.league_id) === fixtureLeague)
-    : fixtures
-
-  const filteredTeams = selectedLeague
-    ? teams.filter((t: any) => String(t.league_id) === String(selectedLeague))
-    : teams
-
+  // Derive summary stats from live DB results
   const completed = liveResults.filter((m: any) => m.home_score !== null)
+  // A "correct" prediction: home win when home_score > away_score (simple baseline)
   const correctCount = completed.filter((m: any) => m.home_score !== m.away_score).length
   const accuracy = completed.length > 0 ? Math.round((correctCount / completed.length) * 100) : 0
-
-  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="mx-auto max-w-[1280px] px-4 lg:px-6 py-6">
-
         {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-xl font-bold text-foreground text-balance">Match Predictions</h1>
@@ -175,25 +176,14 @@ export default function PredictionsPage() {
 
         {/* Stat Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          <StatCard
-            icon={Target}
-            label="Model Accuracy"
-            value={engineStatus?.cv_accuracy ? `${Math.round(engineStatus.cv_accuracy * 100)}%` : `${accuracy}%`}
-            sub={engineStatus?.n_samples ? `${engineStatus.n_samples} matches trained` : `${correctCount}/${completed.length} correct`}
-          />
+          <StatCard icon={Target} label="Model Accuracy" value={engineStatus?.cv_accuracy ? `${Math.round(engineStatus.cv_accuracy * 100)}%` : `${accuracy}%`} sub={engineStatus?.n_samples ? `${engineStatus.n_samples} matches trained` : `${correctCount}/${completed.length} correct`} />
           <StatCard icon={TrendingUp} label="Upcoming Fixtures" value={String(fixtures.length)} sub="Ready to predict" />
           <StatCard icon={BarChart3} label="Results in DB" value={String(completed.length)} sub="From Supabase" />
-          <StatCard
-            icon={Cpu}
-            label="ML Engine"
-            value={engineStatus?.model_trained ? "Ready" : "Untrained"}
-            sub={engineStatus?.n_features ? `${engineStatus.n_features} features` : "Not trained yet"}
-          />
+          <StatCard icon={Cpu} label="ML Engine" value={engineStatus?.model_trained ? "Ready" : "Untrained"} sub={engineStatus?.n_features ? `${engineStatus.n_features} features` : "Not trained yet"} />
         </div>
 
-        {/* ── ML Prediction Engine ── */}
+        {/* ── ML Prediction Engine Section ────────────────────────────────── */}
         <div className="rounded-lg border border-border bg-card mb-6 overflow-hidden">
-
           {/* Engine Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-b border-border">
             <div className="flex items-center gap-3">
@@ -214,15 +204,12 @@ export default function PredictionsPage() {
                   </span>
                   {engineStatus.cv_accuracy && (
                     <span className="text-xs text-muted-foreground">
-                      CV Accuracy:{" "}
-                      <span className="font-bold text-foreground">{Math.round(engineStatus.cv_accuracy * 100)}%</span>
+                      CV Accuracy: <span className="font-bold text-foreground">{Math.round(engineStatus.cv_accuracy * 100)}%</span>
                     </span>
                   )}
                   {engineStatus.n_samples > 0 && (
                     <span className="text-xs text-muted-foreground hidden sm:inline">
-                      on{" "}
-                      <span className="font-bold text-foreground">{engineStatus.n_samples.toLocaleString()}</span>
-                      {" "}matches
+                      on <span className="font-bold text-foreground">{engineStatus.n_samples.toLocaleString()}</span> matches
                     </span>
                   )}
                 </>
@@ -243,7 +230,7 @@ export default function PredictionsPage() {
             </div>
           </div>
 
-          {/* Train Result Banner */}
+          {/* Train result banner */}
           {trainResult && (
             <div className={`px-6 py-3 text-sm border-b border-border ${trainResult.success ? "bg-success/5 text-success" : "bg-destructive/5 text-destructive"}`}>
               {trainResult.success
@@ -267,6 +254,7 @@ export default function PredictionsPage() {
                 ))}
               </select>
             </div>
+
             {fixturesLoading ? (
               <p className="text-sm text-muted-foreground animate-pulse py-4 text-center">Loading fixtures…</p>
             ) : displayedFixtures.length === 0 ? (
@@ -276,12 +264,11 @@ export default function PredictionsPage() {
                 {displayedFixtures.map((fx) => (
                   <div
                     key={fx.id}
+                    className={`flex items-center justify-between rounded-lg border px-4 py-3 transition-colors cursor-pointer ${selectedFixture?.id === fx.id
+                      ? "border-primary/50 bg-primary/5"
+                      : "border-border hover:border-border/80 hover:bg-secondary/30"
+                      }`}
                     onClick={() => handlePredictFixture(fx)}
-                    className={`flex items-center justify-between rounded-lg border px-4 py-3 transition-colors cursor-pointer ${
-                      selectedFixture?.id === fx.id
-                        ? "border-primary/50 bg-primary/5"
-                        : "border-border hover:border-border/80 hover:bg-secondary/30"
-                    }`}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-foreground truncate">
@@ -296,10 +283,11 @@ export default function PredictionsPage() {
                       disabled={predictingFixture === fx.id}
                       className="ml-3 flex-shrink-0 inline-flex items-center gap-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50"
                     >
-                      {predictingFixture === fx.id
-                        ? <RefreshCw className="h-3 w-3 animate-spin" />
-                        : <Play className="h-3 w-3" />
-                      }
+                      {predictingFixture === fx.id ? (
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Play className="h-3 w-3" />
+                      )}
                       {predictingFixture === fx.id ? "Predicting…" : "Predict"}
                     </button>
                   </div>
@@ -318,8 +306,7 @@ export default function PredictionsPage() {
                 </div>
               ) : (
                 <div className="space-y-5">
-
-                  {/* Match header */}
+                  {/* Match Header */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{fixtureResult.match?.league}</p>
@@ -328,11 +315,9 @@ export default function PredictionsPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
-                        fixtureResult.confidence === "High" ? "bg-success/10 text-success"
-                        : fixtureResult.confidence === "Medium" ? "bg-warning/10 text-warning"
-                        : "bg-muted text-muted-foreground"
-                      }`}>
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${fixtureResult.confidence === "High" ? "bg-success/10 text-success" :
+                        fixtureResult.confidence === "Medium" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"
+                        }`}>
                         {fixtureResult.confidence} Confidence
                       </span>
                       <p className="text-xs text-muted-foreground mt-1">{Math.round((fixtureResult.confidence_score || 0) * 100)}% certainty</p>
@@ -359,7 +344,7 @@ export default function PredictionsPage() {
                     })}
                   </div>
 
-                  {/* xG */}
+                  {/* xG & Predicted Score */}
                   {fixtureResult.expected_goals && (
                     <div className="rounded-lg border border-border bg-card px-5 py-4">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Expected Goals (xG)</p>
@@ -382,6 +367,7 @@ export default function PredictionsPage() {
 
                   {/* Key Factors & Performance Patterns */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Key Factors */}
                     {fixtureResult.key_factors?.length > 0 && (
                       <div className="rounded-lg border border-border bg-card px-4 py-4">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Key Deciding Factors</p>
@@ -395,6 +381,8 @@ export default function PredictionsPage() {
                         </ul>
                       </div>
                     )}
+
+                    {/* Performance Patterns */}
                     {fixtureResult.team_comparison && (
                       <div className="rounded-lg border border-border bg-card px-4 py-4">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Performance Patterns</p>
@@ -423,7 +411,7 @@ export default function PredictionsPage() {
                     )}
                   </div>
 
-                  {/* H2H */}
+                  {/* H2H Summary */}
                   {fixtureResult.h2h && (fixtureResult.h2h.home_wins + fixtureResult.h2h.draws + fixtureResult.h2h.away_wins) > 0 && (
                     <div className="rounded-lg border border-border bg-card px-4 py-3">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Head to Head History</p>
@@ -431,45 +419,33 @@ export default function PredictionsPage() {
                         <span className="text-primary font-bold">{fixtureResult.h2h.home_wins}W</span>
                         <span className="text-muted-foreground">{fixtureResult.h2h.draws}D</span>
                         <span className="text-info font-bold">{fixtureResult.h2h.away_wins}W</span>
-                        <span className="text-xs text-muted-foreground ml-auto">
-                          {fixtureResult.match?.home_team} vs {fixtureResult.match?.away_team}
-                        </span>
+                        <span className="text-xs text-muted-foreground ml-auto">{fixtureResult.match?.home_team} vs {fixtureResult.match?.away_team}</span>
                       </div>
                       {fixtureResult.h2h.last_5?.length > 0 && (
                         <div className="flex gap-1.5 mt-2">
                           {fixtureResult.h2h.last_5.map((r: string, i: number) => (
-                            <span
-                              key={i}
-                              className={`text-xs font-bold rounded px-1.5 py-0.5 ${
-                                r === "H" ? "bg-primary/10 text-primary"
-                                : r === "A" ? "bg-info/10 text-info"
-                                : "bg-secondary text-muted-foreground"
-                              }`}
-                            >
-                              {r === "H" ? "HW" : r === "A" ? "AW" : "D"}
-                            </span>
+                            <span key={i} className={`text-xs font-bold rounded px-1.5 py-0.5 ${r === "H" ? "bg-primary/10 text-primary" : r === "A" ? "bg-info/10 text-info" : "bg-secondary text-muted-foreground"
+                              }`}>{r === "H" ? "HW" : r === "A" ? "AW" : "D"}</span>
                           ))}
                         </div>
                       )}
                     </div>
                   )}
-
                 </div>
               )}
             </div>
           )}
-
         </div>
-        {/* /ML Prediction Engine */}
 
-        {/* ── Generate Custom Prediction ── */}
+        {/* Generate Prediction Feature */}
         <div className="rounded-lg border border-border bg-card p-6 mb-6">
           <h2 className="text-xl font-bold text-foreground mb-4">🔮 Generate Custom Prediction</h2>
+          {/* League Selector */}
           <div className="mb-4">
             <label className="text-xs text-muted-foreground mb-1.5 block">Filter by League (optional)</label>
             <select
               value={selectedLeague}
-              onChange={(e) => { setSelectedLeague(e.target.value); setHome(""); setAway("") }}
+              onChange={e => { setSelectedLeague(e.target.value); setHome(""); setAway("") }}
               className="w-full sm:w-72 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="">All Leagues</option>
@@ -482,9 +458,9 @@ export default function PredictionsPage() {
             <div className="flex-1 w-full">
               <label className="text-xs text-muted-foreground mb-1.5 block">Home Team</label>
               <select
-                value={home}
-                onChange={(e) => setHome(e.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                value={home}
+                onChange={e => setHome(e.target.value)}
               >
                 <option value="">Select home team...</option>
                 {filteredTeams.map((t) => (
@@ -496,9 +472,9 @@ export default function PredictionsPage() {
             <div className="flex-1 w-full">
               <label className="text-xs text-muted-foreground mb-1.5 block">Away Team</label>
               <select
-                value={away}
-                onChange={(e) => setAway(e.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                value={away}
+                onChange={e => setAway(e.target.value)}
               >
                 <option value="">Select away team...</option>
                 {filteredTeams.filter((t) => t.name !== home).map((t) => (
@@ -515,8 +491,10 @@ export default function PredictionsPage() {
               {loadingPred ? "Predicting..." : "Predict"}
             </button>
           </div>
+
+          {/* Custom Prediction Result */}
           {customResult && (
-            <div className={`mt-6 p-4 rounded-lg border ${customResult.error ? "border-destructive bg-destructive/5" : "border-primary/30 bg-primary/5"}`}>
+            <div className={`mt-6 p-4 rounded-lg border ${customResult.error ? 'border-destructive bg-destructive/5' : 'border-primary/30 bg-primary/5'}`}>
               {customResult.error ? (
                 <div className="flex items-center gap-2 text-destructive">
                   <Info className="h-5 w-5" />
@@ -546,20 +524,17 @@ export default function PredictionsPage() {
                       <p className="font-mono text-lg">{Math.round(customResult.away_win_prob * 100)}%</p>
                     </div>
                   </div>
-                  <div className="mt-3 text-xs text-muted-foreground">
-                    Predicted Score: {customResult.predicted_score.home} - {customResult.predicted_score.away}
+                  <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Predicted Score: {customResult.predicted_score.home} - {customResult.predicted_score.away}</span>
                   </div>
                 </div>
               )}
             </div>
           )}
         </div>
-        {/* /Generate Custom Prediction */}
 
-        {/* ── Bottom Row: 3 siblings ── */}
         <div className="flex flex-col lg:flex-row gap-6">
-
-          {/* SIBLING 1 — Recent Results list */}
+          {/* Left: Past Results from DB */}
           <div className="w-full lg:w-[400px] shrink-0">
             <h2 className="text-sm font-semibold text-foreground mb-3">Recent Results — From Database</h2>
             {resultsLoading ? (
@@ -583,12 +558,12 @@ export default function PredictionsPage() {
               </div>
             )}
           </div>
-          {/* /SIBLING 1 */}
 
-          {/* SIBLING 2 — Match Detail */}
+          {/* Right: Match Detail from DB */}
           <div className="flex-1 min-w-0">
             {selected ? (
               <>
+                {/* Match Header */}
                 <div className="rounded-lg border border-border bg-card p-4 mb-4">
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -609,22 +584,29 @@ export default function PredictionsPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Result Badge */}
                   <div className="flex gap-2">
                     {selected.home_score !== null && (
-                      <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
-                        selected.home_score > selected.away_score ? "bg-primary/10 text-primary"
-                        : selected.home_score < selected.away_score ? "bg-info/10 text-info"
-                        : "bg-secondary text-muted-foreground"
-                      }`}>
-                        {selected.home_score > selected.away_score
-                          ? `${selected.home_team} Win`
+                      <>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${selected.home_score > selected.away_score
+                          ? "bg-primary/10 text-primary"
                           : selected.home_score < selected.away_score
-                          ? `${selected.away_team} Win`
-                          : "Draw"}
-                      </span>
+                            ? "bg-info/10 text-info"
+                            : "bg-secondary text-muted-foreground"
+                          }`}>
+                          {selected.home_score > selected.away_score
+                            ? `${selected.home_team} Win`
+                            : selected.home_score < selected.away_score
+                              ? `${selected.away_team} Win`
+                              : "Draw"}
+                        </span>
+                      </>
                     )}
                   </div>
                 </div>
+
+                {/* WPA Note — real WPA requires live match feed */}
                 <div className="rounded-lg border border-border bg-card p-4 mb-4">
                   <h3 className="text-sm font-semibold text-foreground mb-1">Win Probability Timeline</h3>
                   <p className="text-xs text-muted-foreground mb-3">Real-time WPA requires a live match data feed</p>
@@ -643,87 +625,67 @@ export default function PredictionsPage() {
               </div>
             )}
           </div>
-          {/* /SIBLING 2 */}
-
-          {/* SIBLING 3 — Weekly Accuracy Trend */}
-          <div className="w-full lg:w-[320px] shrink-0 rounded-lg border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-1">Weekly Accuracy Trend</h3>
-            <p className="text-xs text-muted-foreground mb-4">Model performance by gameweek — from Supabase</p>
-            {weeklyTrends.length === 0 ? (
-              <div className="flex items-center justify-center h-[200px] rounded-lg bg-secondary/20 border border-dashed border-border">
-                <p className="text-sm text-muted-foreground">No gameweek data yet — sync match data first</p>
-              </div>
-            ) : (
-              <div className="h-[200px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyTrends} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.01 260)" vertical={false} />
-                    <XAxis
-                      dataKey="week"
-                      tick={{ fontSize: 10, fill: "oklch(0.55 0.01 260)" }}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      domain={[0, 100]}
-                      tick={{ fontSize: 10, fill: "oklch(0.55 0.01 260)" }}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(v: number) => `${v}%`}
-                    />
-                    <Tooltip
-                      content={({ active, payload }: any) => {
-                        if (!active || !payload?.length) return null
-                        const d = payload[0].payload
-                        return (
-                          <div className="rounded-lg border border-border bg-card p-3 shadow-xl">
-                            <p className="text-xs font-semibold text-foreground">{d.week}</p>
-                            <p className="text-xs text-muted-foreground">{d.correct}/{d.predictions} correct ({d.accuracy}%)</p>
-                          </div>
-                        )
-                      }}
-                    />
-                    <Bar dataKey="accuracy" radius={[4, 4, 0, 0]}>
-                      {weeklyTrends.map((entry: any, i: number) => (
-                        <Cell
-                          key={i}
-                          fill={
-                            entry.accuracy >= 80 ? "oklch(0.65 0.19 145)"
-                            : entry.accuracy >= 70 ? "oklch(0.7 0.18 55)"
-                            : "oklch(0.55 0.2 27)"
-                          }
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-          {/* /SIBLING 3 */}
-
         </div>
-        {/* /Bottom Row */}
 
-      </main>
-      <Footer />
+        {/* Weekly Accuracy Trend */}
+        <div className="rounded-lg border border-border bg-card p-4 mt-6">
+          <h3 className="text-sm font-semibold text-foreground mb-1">Weekly Accuracy Trend</h3>
+          <p className="text-xs text-muted-foreground mb-4">Model performance by gameweek — from Supabase</p>
+          {weeklyTrends.length === 0 ? (
+            <div className="flex items-center justify-center h-[200px] rounded-lg bg-secondary/20 border border-dashed border-border">
+              <p className="text-sm text-muted-foreground">No gameweek data yet — sync match data first</p>
+            </div>
+          ) : (
+            <div className="h-[200px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyTrends} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.01 260)" vertical={false} />
+                  <XAxis
+                    dataKey="week"
+                    tick={{ fontSize: 10, fill: "oklch(0.55 0.01 260)" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    tick={{ fontSize: 10, fill: "oklch(0.55 0.01 260)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v: number) => `${v}%`}
+                  />
+                  <Tooltip
+                    content={({ active, payload }: any) => {
+                      if (!active || !payload?.length) return null
+                      const d = payload[0].payload
+                      return (
+                        <div className="rounded-lg border border-border bg-card p-3 shadow-xl">
+                          <p className="text-xs font-semibold text-foreground">{d.week}</p>
+                          <p className="text-xs text-muted-foreground">{d.correct}/{d.predictions} correct ({d.accuracy}%)</p>
+                        </div>
+                      )
+                    }}
+                  />
+                  <Bar dataKey="accuracy" radius={[4, 4, 0, 0]}>
+                    {weeklyTrends.map((entry: any, i: number) => (
+                      <Cell
+                        key={i}
+                        fill={entry.accuracy >= 80 ? "oklch(0.65 0.19 145)" : entry.accuracy >= 70 ? "oklch(0.7 0.18 55)" : "oklch(0.55 0.2 27)"}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
     </div>
+    </main >
+    <Footer />
+    </div >
   )
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-}: {
-  icon: React.ElementType
-  label: string
-  value: string
-  sub: string
-}) {
+function StatCard({ icon: Icon, label, value, sub }: { icon: React.ElementType; label: string; value: string; sub: string }) {
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-muted-foreground mb-3">
@@ -751,17 +713,17 @@ function ResultCard({
   return (
     <button
       onClick={onSelect}
-      className={`w-full text-left rounded-lg border p-4 transition-all ${
-        isSelected ? "border-primary/50 bg-primary/5" : "border-border bg-card hover:border-border/80"
-      }`}
+      className={`w-full text-left rounded-lg border p-4 transition-all ${isSelected
+        ? "border-primary/50 bg-primary/5"
+        : "border-border bg-card hover:border-border/80"
+        }`}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-            homeWon ? "bg-primary/10 text-primary"
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${homeWon ? "bg-primary/10 text-primary"
             : awayWon ? "bg-info/10 text-info"
-            : "bg-secondary text-muted-foreground"
-          }`}>
+              : "bg-secondary text-muted-foreground"
+            }`}>
             {homeWon ? "Home Win" : awayWon ? "Away Win" : "Draw"}
           </span>
           {match.gameweek && (
@@ -770,6 +732,7 @@ function ResultCard({
         </div>
         <ChevronRight className={`h-3.5 w-3.5 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
       </div>
+
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className={`text-sm font-semibold ${homeWon ? "text-foreground" : "text-foreground/70"}`}>
@@ -785,12 +748,14 @@ function ResultCard({
           </p>
         </div>
       </div>
+
       <p className="text-[10px] text-muted-foreground mt-2">
         {match.league} · {match.match_date ? new Date(match.match_date).toLocaleDateString() : ""}
       </p>
     </button>
   )
 }
+
 
 function StatLine({ label, value }: { label: string; value: string }) {
   return (
