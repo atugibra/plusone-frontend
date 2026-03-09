@@ -46,3 +46,22 @@ export const getPredictionResults = (params: Record<string, any> = {}) =>
 // Weekly accuracy trend from real match data (replaces hardcoded weeklyTrends)
 export const getPredictionAccuracy = (params: Record<string, any> = {}) =>
     req(`/api/predictions/accuracy?${new URLSearchParams(params as any)}`);
+
+// ── DC Markets Engine ────────────────────────────────────────────────────────
+export const getDCStatus = () => req('/api/markets/dc/status');
+export const trainDCModel = () => req('/api/markets/dc/train', { method: 'POST' });
+export const getDCPredict = (homeId: number, awayId: number) =>
+    req(`/api/markets/dc/predict?home_team_id=${homeId}&away_team_id=${awayId}`);
+export const getMarkets = (homeId: number, awayId: number) =>
+    req(`/api/markets?home_team_id=${homeId}&away_team_id=${awayId}`);
+export const getDCLeaderboard = () => req('/api/markets/dc/leaderboard');
+export const getValueBets = (payload: any) =>
+    req('/api/markets/value', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
+// ── Performance Metrics ──────────────────────────────────────────────────────
+export const getPerformance = () => req('/api/performance');
+export const getPerformanceDrift = () => req('/api/performance/drift');
+export const getCalibration = () => req('/api/performance/calibration');
+export const getPerLeague = () => req('/api/performance/per-league');
+export const getConfusionMatrix = () => req('/api/performance/confusion');
+
