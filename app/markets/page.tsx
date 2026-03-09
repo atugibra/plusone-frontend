@@ -49,6 +49,7 @@ export default function MarketsPage() {
     const [dcStatus, setDcStatus] = useState<any>(null)
     const [dcLoading, setDcLoading] = useState(true)
     const [training, setTraining] = useState(false)
+    const [polling, setPolling] = useState(false)
     const [trainMsg, setTrainMsg] = useState("")
     const [leagues, setLeagues] = useState<any[]>([])
     const [teams, setTeams] = useState<any[]>([])
@@ -79,13 +80,27 @@ export default function MarketsPage() {
     const filteredTeams = selectedLeague ? teams.filter((t: any) => String(t.league_id) === selectedLeague) : teams
 
     const handleTrain = async () => {
-        setTraining(true); setTrainMsg("Training started in background…")
+        setTraining(true); setTrainMsg("Starting training…")
         try {
             await trainDCModel()
-            setTrainMsg("✅ Training started! Refresh status in ~30s.")
-            setTimeout(() => getDCStatus().then(s => setDcStatus(s)), 20000)
-        } catch { setTrainMsg("❌ Train request failed.") }
-        setTraining(false)
+            setTrainMsg("⏳ Training in progress — checking every 5s…")
+            setTraining(false)
+            setPolling(true)
+            // Poll until ready
+            const poll = setInterval(async () => {
+                try {
+                    const s = await getDCStatus()
+                    setDcStatus(s)
+                    if (s?.dc_model_trained) {
+                        clearInterval(poll)
+                        setPolling(false)
+                        setTrainMsg(`✅ Ready! Trained on ${s.n_matches} matches across ${s.n_teams} teams.`)
+                    }
+                } catch { /* keep polling */ }
+            }, 5000)
+            // Safety timeout after 3 min
+            setTimeout(() => { clearInterval(poll); setPolling(false); setTrainMsg("⚠️ Timed out — check backend logs and try again.") }, 180000)
+        } catch { setTrainMsg("❌ Train request failed."); setTraining(false) }
     }
 
     const handleGetMarkets = async () => {
@@ -150,8 +165,8 @@ export default function MarketsPage() {
                                 ? <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 text-success px-3 py-1 text-xs font-semibold"><span className="h-1.5 w-1.5 rounded-full bg-success" />Trained</span>
                                 : <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/10 text-warning px-3 py-1 text-xs font-semibold"><AlertCircle className="h-3 w-3" />Not Trained</span>
                             )}
-                            <button onClick={handleTrain} disabled={training} className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60">
-                                <RefreshCw className={`h-3.5 w-3.5 ${training ? "animate-spin" : ""}`} />{training ? "Training…" : dcStatus?.dc_model_trained ? "Retrain" : "Train Engine"}
+                            <button onClick={handleTrain} disabled={training || polling} className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60">
+                                <RefreshCw className={`h-3.5 w-3.5 ${(training || polling) ? "animate-spin" : ""}`} />{training ? "Starting…" : polling ? "Training…" : dcStatus?.dc_model_trained ? "Retrain" : "Train Engine"}
                             </button>
                             <button onClick={handleLeaderboard} className="inline-flex items-center gap-2 rounded-lg bg-secondary text-foreground px-4 py-2 text-sm font-semibold hover:bg-secondary/80 transition-colors">
                                 <Trophy className="h-3.5 w-3.5" />Elo Rankings
@@ -198,11 +213,23 @@ export default function MarketsPage() {
                                     {filteredTeams.filter((t: any) => String(t.id) !== homeId).map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
                                 </select>
                             </div>
-                            <button onClick={handleGetMarkets} disabled={loading || !homeId || !awayId} className="px-6 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2">
-                                <BarChart3 className="h-4 w-4" />{loading ? "Loading…" : "Get Markets"}
+                            <button onClick={handleGetMarkets} disabled={loading || !homeId || !awayId || !dcStatus?.dc_model_trained || polling} className="px-6 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2">
+                                <BarChart3 className="h-4 w-4" />{loading ? "Loading…" : polling ? "Waiting for model…" : "Get Markets"}
                             </button>
                         </div>
                         {error && <div className="mt-3 flex items-center gap-2 text-sm text-destructive"><AlertCircle className="h-4 w-4 flex-shrink-0" />{error}</div>}
+                        {!dcStatus?.dc_model_trained && !polling && !training && (
+                            <p className="mt-3 text-xs text-warning flex items-center gap-1.5">
+                                <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                                Train the DC model first, then pick teams and click Get Markets.
+                            </p>
+                        )}
+                        {polling && (
+                            <p className="mt-3 text-xs text-muted-foreground animate-pulse flex items-center gap-1.5">
+                                <RefreshCw className="h-3.5 w-3.5 animate-spin flex-shrink-0" />
+                                Training in progress — Get Markets will unlock automatically when ready…
+                            </p>
+                        )}
                     </div>
                 </div>
 
