@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, BarChart3, TrendingUp, Users, Trophy, Calendar, Menu, X, ListOrdered, Shield, Zap, RefreshCw, LineChart, Percent } from "lucide-react"
+import { Activity, BarChart3, TrendingUp, Users, Trophy, Calendar, Menu, X, ListOrdered, Shield, Zap, RefreshCw, LineChart, Percent, Sparkles } from "lucide-react"
 import { useState } from "react"
 
 const navLinks = [
@@ -13,12 +13,14 @@ const navLinks = [
   { href: "/squad-stats", label: "Squad Stats", icon: Shield },
   { href: "/players", label: "Players", icon: Users },
   { href: "/predictions", label: "Predictions", icon: TrendingUp },
+  { href: "/predictions-feed", label: "Free Picks", icon: Sparkles },
   { href: "/head-to-head", label: "Head to Head", icon: Zap },
   { href: "/sync", label: "Sync / Data", icon: RefreshCw },
   { href: "/home-away-split", label: "Home-Away Split", icon: Activity },
   { href: "/markets", label: "Markets", icon: Percent },
   { href: "/performance", label: "Performance", icon: LineChart },
 ]
+
 
 export function Header() {
   const pathname = usePathname()
