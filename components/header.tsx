@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Activity, BarChart3, TrendingUp, Users, Trophy, Calendar, Menu, X, ListOrdered, Shield, Zap, RefreshCw, LineChart, Percent, Sparkles } from "lucide-react"
+import { SettingsModal } from "@/components/settings-modal"
 import { useState } from "react"
 
 const navLinks = [
@@ -73,9 +74,8 @@ export function Header() {
               </span>
               <span className="text-[10px] font-medium text-primary">9 Leagues</span>
             </div>
-import { SettingsModal } from "@/components/settings-modal"
-
-// ... (in Header component)
+            </div>
+            
             <div className="hidden sm:flex flex-col items-end">
               <span className="text-xs font-medium text-foreground">2025-26</span>
               <span className="text-[10px] text-muted-foreground">Season Active</span>
