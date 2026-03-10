@@ -73,10 +73,15 @@ export function Header() {
               </span>
               <span className="text-[10px] font-medium text-primary">9 Leagues</span>
             </div>
+import { SettingsModal } from "@/components/settings-modal"
+
+// ... (in Header component)
             <div className="hidden sm:flex flex-col items-end">
               <span className="text-xs font-medium text-foreground">2025-26</span>
               <span className="text-[10px] text-muted-foreground">Season Active</span>
             </div>
+            
+            <SettingsModal />
 
             {/* Mobile menu button */}
             <button
