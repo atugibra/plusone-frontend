@@ -63,6 +63,12 @@ export const getMarkets = (homeId: number, awayId: number) =>
 export const getDCLeaderboard = () => req('/api/markets/dc/leaderboard');
 export const getValueBets = (payload: any) =>
     req('/api/markets/value', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+// DC-engine bulk predictions for all upcoming fixtures (powers Free Picks page)
+export const getMarketsUpcoming = (params: Record<string, any> = {}) =>
+    req(`/api/markets/upcoming?${new URLSearchParams(params as any)}`);
+// Rich pre-match data for card expand (form, H2H with scores, upcoming, stats)
+export const getMatchPreview = (homeId: number, awayId: number) =>
+    req(`/api/markets/match-preview?home_team_id=${homeId}&away_team_id=${awayId}`);
 
 // ── Performance Metrics ──────────────────────────────────────────────────────
 export const getPerformance = () => req('/api/performance');
