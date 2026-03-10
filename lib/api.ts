@@ -37,6 +37,12 @@ export const getPredictionFixtures = (params: Record<string, any> = {}) =>
     req(`/api/predictions/fixtures?${new URLSearchParams(params as any)}`);
 export const getUpcomingPredictions = (params: Record<string, any> = {}) =>
     req(`/api/predictions/upcoming?${new URLSearchParams(params as any)}`);
+// Public predictions with bet recommendations (no auth required, 15-min cache)
+export const getPublicPredictions = (params: Record<string, any> = {}) =>
+    req(`/api/predictions/public?${new URLSearchParams(params as any)}`);
+// Real-world accuracy from prediction_log evaluations
+export const getPredictionLogAccuracy = (params: Record<string, any> = {}) =>
+    req(`/api/prediction-log/accuracy?${new URLSearchParams(params as any)}`);
 // Legacy rule-based prediction by team name
 export const predictMatch = (payload: { home_team: string; away_team: string; league?: string }) =>
     req('/api/predictions/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
