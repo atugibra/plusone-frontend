@@ -1,19 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/components/theme-provider";
 import { Settings, X, Moon, Sun, Monitor, Check } from "lucide-react";
 
 export function SettingsModal() {
   const [open, setOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, oddsFormat, setOddsFormat, animationsEnabled, setAnimationsEnabled } = useStore();
   const [mounted, setMounted] = useState(false);
-  
-  const oddsFormat = useStore((state) => state.oddsFormat);
-  const setOddsFormat = useStore((state) => state.setOddsFormat);
-  const animationsEnabled = useStore((state) => state.animationsEnabled);
-  const setAnimationsEnabled = useStore((state) => state.setAnimationsEnabled);
 
   useEffect(() => setMounted(true), []);
 
