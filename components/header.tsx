@@ -74,7 +74,6 @@ export function Header() {
               </span>
               <span className="text-[10px] font-medium text-primary">9 Leagues</span>
             </div>
-            </div>
             
             <div className="hidden sm:flex flex-col items-end">
               <span className="text-xs font-medium text-foreground">2025-26</span>
