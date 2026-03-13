@@ -792,7 +792,26 @@ export default function PredictionsPage() {
               ) : (
                 <div>
                   <h3 className="text-base font-bold text-foreground flex items-center gap-2 mb-3">
-                    Result: {customResult.home_team} vs {customResult.away_team}
+                    Result: 
+                    <div className="flex items-center gap-1.5 ml-1">
+                      {customResult.home_logo && (
+                        <div className="relative h-5 w-5 rounded-full overflow-hidden bg-white/10 flex-shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={customResult.home_logo} alt="" className="object-contain absolute inset-0 w-full h-full p-0.5" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        </div>
+                      )}
+                      <span>{customResult.home_team}</span>
+                    </div>
+                    <span className="text-muted-foreground font-normal text-sm">vs</span> 
+                    <div className="flex items-center gap-1.5">
+                      <span>{customResult.away_team}</span>
+                      {customResult.away_logo && (
+                        <div className="relative h-5 w-5 rounded-full overflow-hidden bg-white/10 flex-shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={customResult.away_logo} alt="" className="object-contain absolute inset-0 w-full h-full p-0.5" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        </div>
+                      )}
+                    </div>
                     {customResult.confidence === "high" && (
                       <span className="ml-2 inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary uppercase animate-pulse">
                         🔥 High Confidence Tip!

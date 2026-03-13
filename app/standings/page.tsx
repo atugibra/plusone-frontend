@@ -217,7 +217,24 @@ function StandingsTable({ rows, highlight = false }: { rows: any[]; highlight?: 
                                     }`}
                             >
                                 <td className="px-3 py-3 text-center font-mono text-muted-foreground">{r.rank ?? i + 1}</td>
-                                <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">{r.team}</td>
+                                <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">
+                                    <div className="flex items-center gap-2">
+                                        {r.logo_url ? (
+                                            <div className="relative h-5 w-5 rounded-full overflow-hidden bg-white/10 flex-shrink-0">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img 
+                                                    src={r.logo_url} 
+                                                    alt={`${r.team} logo`} 
+                                                    className="object-contain absolute inset-0 w-full h-full p-0.5"
+                                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="h-5 w-5 rounded-full bg-secondary flex-shrink-0" />
+                                        )}
+                                        <span className="truncate">{r.team}</span>
+                                    </div>
+                                </td>
                                 <td className="px-2 py-3 text-center text-muted-foreground">{r.games}</td>
                                 <td className="px-2 py-3 text-center font-semibold text-primary">{r.wins}</td>
                                 <td className="px-2 py-3 text-center font-semibold text-warning">{r.ties}</td>

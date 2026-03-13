@@ -1,5 +1,7 @@
 "use client"
 
+import Image from "next/image"
+
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Header } from "@/components/header"
@@ -18,6 +20,7 @@ interface TeamData {
     country?: string
     founded?: number
     stadium?: string
+    logo_url?: string
 }
 
 interface StatRow {
@@ -48,18 +51,35 @@ function MatchRow({ match, teamId }: { match: any; teamId: number }) {
     const gf = isHome ? match.home_score : match.away_score
     const ga = isHome ? match.away_score : match.home_score
     const opp = isHome ? match.away_team : match.home_team
-    const result = gf > ga ? "W" : gf < ga ? "L" : "D"
-    const resultColor = result === "W" ? "text-success bg-success/10" : result === "L" ? "text-destructive bg-destructive/10" : "text-muted-foreground bg-secondary"
+    
+    // In getMatches, ht.logo_url AS home_logo, at.logo_url AS away_logo is now returned
+    const oppLogo = isHome ? match.away_logo : match.home_logo
+    
+    const result = gf !== null && ga !== null ? (gf > ga ? "W" : gf < ga ? "L" : "D") : "-"
+    const resultColor = result === "W" ? "text-success bg-success/10" : result === "L" ? "text-destructive bg-destructive/10" : result === "D" ? "text-muted-foreground bg-secondary" : "text-info bg-info/10 text-[10px]"
+    
     return (
-        <div className="flex items-center justify-between py-2 border-b border-border last:border-0 text-sm">
+        <div className="flex items-center justify-between py-2 border-b border-border last:border-0 text-sm hover:bg-secondary/20 transition-colors px-2 -mx-2 rounded">
             <div className="flex items-center gap-3">
-                <span className={`${resultColor} text-xs font-bold px-1.5 py-0.5 rounded`}>{result}</span>
+                <span className={`${resultColor} font-bold px-1.5 py-0.5 rounded w-6 text-center shrink-0`}>
+                  {result !== "-" ? result : "TBD"}
+                </span>
                 <div>
-                    <p className="font-medium text-foreground">{isHome ? "vs" : "@"} {opp}</p>
-                    <p className="text-xs text-muted-foreground">{match.match_date ? new Date(match.match_date).toLocaleDateString() : ""} {match.league || ""}</p>
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground mr-1 shrink-0">{isHome ? "vs" : "@"}</span>
+                        <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                            <Image src={oppLogo || "/placeholder-logo.png"} alt={`${opp} logo`} fill sizes="20px" className="object-contain p-0.5" />
+                        </div>
+                        <p className="font-medium text-foreground">{opp}</p>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{match.match_date ? new Date(match.match_date).toLocaleDateString() : ""} {match.league || ""}</p>
                 </div>
             </div>
-            <p className="font-bold text-foreground">{gf} – {ga}</p>
+            {gf !== null && ga !== null ? (
+              <p className="font-bold text-foreground font-mono">{gf} - {ga}</p>
+            ) : (
+              <p className="text-xs font-medium text-muted-foreground"><Calendar className="h-3 w-3 inline mr-1" />Upcoming</p>
+            )}
         </div>
     )
 }
@@ -145,8 +165,12 @@ export default function TeamProfilePage() {
                         {/* Team Header */}
                         <div className="rounded-lg border border-border bg-card px-6 py-6">
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                    <Shield className="h-8 w-8 text-primary" />
+                                <div className="h-16 w-16 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                                    {team.logo_url ? (
+                                        <Image src={team.logo_url} alt={`${team.name} logo`} fill sizes="64px" className="object-contain p-2" />
+                                    ) : (
+                                        <Shield className="h-8 w-8 text-primary" />
+                                    )}
                                 </div>
                                 <div className="flex-1">
                                     <h1 className="text-2xl font-black text-foreground">{team.name}</h1>

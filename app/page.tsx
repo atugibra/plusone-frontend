@@ -1,5 +1,7 @@
 "use client"
 
+import Image from "next/image"
+
 import Link from "next/link"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -264,16 +266,28 @@ export default function DashboardPage() {
                     <span className="text-[10px] text-primary font-medium">{m.league || "League"}</span>
                     <span className="text-[10px] text-muted-foreground">{formatDate(m.date || m.matchDate)}</span>
                   </div>
-                  <div className="flex items-center justify-between mt-1.5">
-                    <span className={`text-sm font-medium ${(m.home_score ?? 0) >= (m.away_score ?? 0) ? "text-foreground" : "text-foreground/60"}`}>
-                      {m.home_team}
-                    </span>
-                    <span className="text-sm font-bold font-mono text-foreground">
+                  <div className="flex items-center justify-between mt-1.5 gap-2">
+                    <div className="flex items-center gap-2 flex-1 justify-end">
+                      <span className={`text-sm font-medium ${(m.home_score ?? 0) >= (m.away_score ?? 0) ? "text-foreground" : "text-foreground/60"}`}>
+                        {m.home_team}
+                      </span>
+                      <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                         <Image src={m.home_logo || "/placeholder-logo.png"} alt={`${m.home_team} logo`} fill sizes="20px" className="object-contain p-0.5" />
+                      </div>
+                    </div>
+                    
+                    <span className="text-sm font-bold font-mono text-foreground shrink-0 text-center w-12">
                       {m.home_score} - {m.away_score}
                     </span>
-                    <span className={`text-sm font-medium ${(m.away_score ?? 0) >= (m.home_score ?? 0) ? "text-foreground" : "text-foreground/60"}`}>
-                      {m.away_team}
-                    </span>
+                    
+                    <div className="flex items-center gap-2 flex-1 justify-start">
+                      <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                         <Image src={m.away_logo || "/placeholder-logo.png"} alt={`${m.away_team} logo`} fill sizes="20px" className="object-contain p-0.5" />
+                      </div>
+                      <span className={`text-sm font-medium ${(m.away_score ?? 0) >= (m.home_score ?? 0) ? "text-foreground" : "text-foreground/60"}`}>
+                        {m.away_team}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -301,12 +315,24 @@ export default function DashboardPage() {
                     <span className="text-[10px] text-primary font-medium">{m.league || "League"}</span>
                     <span className="text-[10px] text-muted-foreground">{formatDate(m.date || m.matchDate)}</span>
                   </div>
-                  <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-sm font-medium text-foreground">{m.home_team || m.homeTeam}</span>
-                    <span className="text-xs text-muted-foreground">vs</span>
-                    <span className="text-sm font-medium text-foreground">{m.away_team || m.awayTeam}</span>
+                  <div className="flex items-center justify-between mt-1.5 gap-2">
+                    <div className="flex flex-1 items-center justify-end gap-2">
+                      <span className="text-sm font-medium text-foreground text-right">{m.home_team || m.homeTeam}</span>
+                      <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                         <Image src={m.home_logo || "/placeholder-logo.png"} alt={`${m.home_team} logo`} fill sizes="20px" className="object-contain p-0.5" />
+                      </div>
+                    </div>
+                    
+                    <span className="text-xs text-muted-foreground shrink-0 text-center w-8">vs</span>
+                    
+                    <div className="flex flex-1 items-center justify-start gap-2">
+                      <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                         <Image src={m.away_logo || "/placeholder-logo.png"} alt={`${m.away_team} logo`} fill sizes="20px" className="object-contain p-0.5" />
+                      </div>
+                      <span className="text-sm font-medium text-foreground">{m.away_team || m.awayTeam}</span>
+                    </div>
                   </div>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">{m.venue}</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1 text-center">{m.venue}</p>
                 </div>
               ))}
             </div>
