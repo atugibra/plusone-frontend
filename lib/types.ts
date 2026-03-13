@@ -15,6 +15,8 @@ export interface Match {
     gameweek?: number;
     home_team: string;
     away_team: string;
+    home_logo?: string;
+    away_logo?: string;
     home_score?: number | null;
     away_score?: number | null;
     venue?: string;

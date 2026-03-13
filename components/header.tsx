@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, BarChart3, TrendingUp, Users, Trophy, Calendar, Menu, X, ListOrdered, Shield, Zap, RefreshCw, LineChart, Percent, Sparkles } from "lucide-react"
+import { Activity, BarChart3, TrendingUp, Users, Trophy, Calendar, Menu, X, ListOrdered, Shield, Zap, RefreshCw, LineChart, Percent, Sparkles, MessageSquare } from "lucide-react"
 import { useState } from "react"
+import { SettingsModal } from "@/components/settings-modal"
 
 const navLinks = [
   { href: "/", label: "Overview", icon: BarChart3 },
@@ -19,6 +20,7 @@ const navLinks = [
   { href: "/home-away-split", label: "Home-Away Split", icon: Activity },
   { href: "/markets", label: "Markets", icon: Percent },
   { href: "/performance", label: "Performance", icon: LineChart },
+  { href: "/feedback", label: "Feedback", icon: MessageSquare },
 ]
 
 
@@ -71,12 +73,15 @@ export function Header() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
               </span>
-              <span className="text-[10px] font-medium text-primary">9 Leagues</span>
+              <span className="text-[10px] font-medium text-primary">22 Leagues</span>
             </div>
             <div className="hidden sm:flex flex-col items-end">
               <span className="text-xs font-medium text-foreground">2025-26</span>
               <span className="text-[10px] text-muted-foreground">Season Active</span>
             </div>
+
+            {/* Settings */}
+            <SettingsModal />
 
             {/* Mobile menu button */}
             <button

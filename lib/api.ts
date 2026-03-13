@@ -76,4 +76,16 @@ export const getPerformanceDrift = () => req('/api/performance/drift');
 export const getCalibration = () => req('/api/performance/calibration');
 export const getPerLeague = () => req('/api/performance/per-league');
 export const getConfusionMatrix = () => req('/api/performance/confusion');
+// Grade all completed predictions against actual match results
+export const evaluatePredictions = () =>
+    req('/api/prediction-log/evaluate', { method: 'POST' });
+
+// ── User Feedback ─────────────────────────────────────────────────────────────
+export const submitFeedback = (body: {
+    name?: string; email?: string;
+    category?: string; message: string; rating?: number;
+}) => req('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+export const getFeedback = (params: Record<string, any> = {}) =>
+    req(`/api/feedback?${new URLSearchParams(params as any)}`);
+
 
