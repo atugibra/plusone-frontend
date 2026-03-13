@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { getPerformance, getPerformanceDrift, getCalibration, getPerLeague, getConfusionMatrix } from "@/lib/api"
-import { BarChart3, TrendingUp, Target, CheckCircle2, AlertCircle } from "lucide-react"
+import { getPerformance, getPerformanceDrift, getCalibration, getPerLeague, getConfusionMatrix, evaluatePredictions } from "@/lib/api"
+import { BarChart3, TrendingUp, Target, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react"
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell
@@ -40,6 +40,21 @@ export default function PerformancePage() {
     const [confusion, setConfusion] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
+    const [evaluating, setEvaluating] = useState(false)
+    const [evalMsg, setEvalMsg] = useState("")
+
+    const runEvaluate = async () => {
+        setEvaluating(true)
+        setEvalMsg("")
+        try {
+            const res = await evaluatePredictions()
+            setEvalMsg(`✅ ${res.evaluated} prediction(s) graded. Reload the page to see updated metrics.`)
+        } catch (e: any) {
+            setEvalMsg(`❌ Evaluate failed: ${e?.message || "unknown error"}`)
+        } finally {
+            setEvaluating(false)
+        }
+    }
 
     useEffect(() => {
         Promise.all([getPerformance(), getPerformanceDrift(), getCalibration(), getPerLeague(), getConfusionMatrix()])
@@ -77,7 +92,18 @@ export default function PerformancePage() {
                     <div className="rounded-lg border border-border bg-card p-12 text-center">
                         <BarChart3 className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-30" />
                         <p className="text-sm font-semibold text-foreground mb-1">No completed predictions yet</p>
-                        <p className="text-xs text-muted-foreground">Performance metrics appear once matches in <code>prediction_log</code> have actual results recorded.</p>
+                        <p className="text-xs text-muted-foreground mb-5">Performance metrics appear once matches in <code>prediction_log</code> have actual results recorded.</p>
+                        <button
+                            onClick={runEvaluate}
+                            disabled={evaluating}
+                            className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${evaluating ? "animate-spin" : ""}`} />
+                            {evaluating ? "Evaluating…" : "Evaluate Predictions"}
+                        </button>
+                        {evalMsg && (
+                            <p className="text-xs mt-3 text-muted-foreground">{evalMsg}</p>
+                        )}
                     </div>
                 ) : (
                     <>

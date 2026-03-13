@@ -7,6 +7,7 @@ import { getMatches, getLeagues } from "@/lib/api"
 import { Match, League } from "@/lib/types"
 import { Calendar, Filter, Search, CheckCircle2, Clock, X } from "lucide-react"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
+import Image from "next/image"
 
 type TabType = "all" | "results" | "fixtures"
 
@@ -166,13 +167,22 @@ export default function MatchesPage() {
 
                     {/* Center: Teams & Score */}
                     <div className="flex-1 flex items-center justify-center gap-3 sm:gap-6 min-w-0">
-                      <div className="flex-1 text-right">
+                      <div className="flex-1 flex items-center justify-end gap-3">
                         <span className={`text-sm font-semibold truncate block ${match.home_score !== null && (match.home_score ?? 0) > (match.away_score ?? 0)
                           ? "text-foreground"
                           : "text-foreground/70"
                           }`}>
                           {match.home_team}
                         </span>
+                        <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                          <Image
+                             src={match.home_logo || "/placeholder-logo.png"}
+                             alt={`${match.home_team} logo`}
+                             fill
+                             sizes="32px"
+                             className="object-contain p-1"
+                          />
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
@@ -189,7 +199,16 @@ export default function MatchesPage() {
                         )}
                       </div>
 
-                      <div className="flex-1 text-left">
+                      <div className="flex-1 flex items-center justify-start gap-3">
+                        <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                          <Image
+                             src={match.away_logo || "/placeholder-logo.png"}
+                             alt={`${match.away_team} logo`}
+                             fill
+                             sizes="32px"
+                             className="object-contain p-1"
+                          />
+                        </div>
                         <span className={`text-sm font-semibold truncate block ${match.home_score !== null && (match.away_score ?? 0) > (match.home_score ?? 0)
                           ? "text-foreground"
                           : "text-foreground/70"

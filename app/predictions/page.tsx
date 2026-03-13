@@ -39,6 +39,7 @@ import {
   Bar,
   Cell,
 } from "recharts"
+import Image from "next/image"
 
 export default function PredictionsPage() {
   // Live DB results
@@ -75,18 +76,18 @@ export default function PredictionsPage() {
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    getLeagues().then((data) => setLeagues(Array.isArray(data) ? data : []))
-    getTeams({ limit: 1000 }).then((data) => setTeams(Array.isArray(data) ? data : []))
+    getLeagues().then((data: any) => setLeagues(Array.isArray(data) ? data : []))
+    getTeams({ limit: 1000 }).then((data: any) => setTeams(Array.isArray(data) ? data : []))
     getPredictionStatus()
-      .then((s) => setEngineStatus(s))
+      .then((s: any) => setEngineStatus(s))
       .catch(() => setEngineStatus(null))
       .finally(() => setEngineLoading(false))
     getPredictionFixtures({ limit: 30 })
-      .then((r) => setFixtures(Array.isArray(r?.fixtures) ? r.fixtures : []))
+      .then((r: any) => setFixtures(Array.isArray(r?.fixtures) ? r.fixtures : []))
       .catch(() => setFixtures([]))
       .finally(() => setFixturesLoading(false))
     getPredictionResults({ limit: 30 })
-      .then((r) => {
+      .then((r: any) => {
         const results = Array.isArray(r?.results) ? r.results : []
         setLiveResults(results)
         if (results.length > 0) setSelected(results[0])
@@ -94,7 +95,7 @@ export default function PredictionsPage() {
       .catch(() => setLiveResults([]))
       .finally(() => setResultsLoading(false))
     getPredictionAccuracy({ weeks: 9 })
-      .then((data) => setWeeklyTrends(Array.isArray(data) ? data : []))
+      .then((data: any) => setWeeklyTrends(Array.isArray(data) ? data : []))
       .catch(() => setWeeklyTrends([]))
 
     return () => {
@@ -403,11 +404,11 @@ export default function PredictionsPage() {
               </h3>
               <select
                 value={fixtureLeague}
-                onChange={(e) => setFixtureLeague(e.target.value)}
+                onChange={(e: any) => setFixtureLeague(e.target.value)}
                 className="appearance-none rounded-lg border border-border bg-secondary/30 px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-w-[160px]"
               >
                 <option value="">All Leagues</option>
-                {leagues.map((l) => (
+                {leagues.map((l: any) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
                   </option>
@@ -425,7 +426,7 @@ export default function PredictionsPage() {
               </p>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {displayedFixtures.map((fx) => (
+                {displayedFixtures.map((fx: any) => (
                   <div
                     key={fx.id}
                     className={`flex items-center justify-between rounded-lg border px-4 py-3 transition-colors cursor-pointer ${
@@ -435,17 +436,37 @@ export default function PredictionsPage() {
                     }`}
                     onClick={() => handlePredictFixture(fx)}
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">
-                        {fx.home_team}{" "}
-                        <span className="text-muted-foreground font-normal">vs</span>{" "}
-                        {fx.away_team}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {fx.league} ·{" "}
-                        {fx.match_date ? new Date(fx.match_date).toLocaleDateString() : "TBD"}
-                        {fx.gameweek ? ` · GW${fx.gameweek}` : ""}
-                      </p>
+                    <div className="flex-1 min-w-0 flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                        <Image
+                           src={fx.home_logo || "/placeholder-logo.png"}
+                           alt={`${fx.home_team} logo`}
+                           fill
+                           sizes="24px"
+                           className="object-contain p-0.5"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5">
+                          {fx.home_team}{" "}
+                          <span className="text-muted-foreground font-normal text-xs">vs</span>{" "}
+                          {fx.away_team}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {fx.league} ·{" "}
+                          {fx.match_date ? new Date(fx.match_date).toLocaleDateString() : "TBD"}
+                          {fx.gameweek ? ` · GW${fx.gameweek}` : ""}
+                        </p>
+                      </div>
+                      <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                        <Image
+                           src={fx.away_logo || "/placeholder-logo.png"}
+                           alt={`${fx.away_team} logo`}
+                           fill
+                           sizes="24px"
+                           className="object-contain p-0.5"
+                        />
+                      </div>
                     </div>
                     <button
                       disabled={predictingFixture === fx.id}
@@ -479,15 +500,37 @@ export default function PredictionsPage() {
                 <div className="space-y-5">
                   {/* Match Header */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">
                         {fixtureResult.match?.league}
                       </p>
-                      <p className="text-lg font-bold text-foreground">
-                        {fixtureResult.match?.home_team}{" "}
-                        <span className="text-muted-foreground">vs</span>{" "}
-                        {fixtureResult.match?.away_team}
-                      </p>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                           <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                             <Image
+                               src={fixtureResult.match?.home_logo || "/placeholder-logo.png"}
+                               alt={fixtureResult.match?.home_team || "Home"}
+                               fill
+                               sizes="40px"
+                               className="object-contain p-1"
+                             />
+                           </div>
+                           <p className="text-lg font-bold text-foreground">{fixtureResult.match?.home_team}</p>
+                        </div>
+                        <span className="text-muted-foreground font-medium px-2">vs</span>
+                        <div className="flex items-center gap-2">
+                           <p className="text-lg font-bold text-foreground">{fixtureResult.match?.away_team}</p>
+                           <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                             <Image
+                               src={fixtureResult.match?.away_logo || "/placeholder-logo.png"}
+                               alt={fixtureResult.match?.away_team || "Away"}
+                               fill
+                               sizes="40px"
+                               className="object-contain p-1"
+                             />
+                           </div>
+                        </div>
+                      </div>
                     </div>
                     <div className="text-right">
                       <span
@@ -588,7 +631,7 @@ export default function PredictionsPage() {
                           Performance Patterns
                         </p>
                         <div className="space-y-3">
-                          {["home", "away"].map((side) => {
+                          {["home", "away"].map((side: any) => {
                             const tc = fixtureResult.team_comparison[side]
                             const name =
                               side === "home"
@@ -674,7 +717,7 @@ export default function PredictionsPage() {
             </label>
             <select
               value={selectedLeague}
-              onChange={(e) => {
+              onChange={(e: any) => {
                 setSelectedLeague(e.target.value)
                 setHome("")
                 setAway("")
@@ -682,7 +725,7 @@ export default function PredictionsPage() {
               className="w-full sm:w-72 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="">All Leagues</option>
-              {leagues.map((l) => (
+              {leagues.map((l: any) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
                 </option>
@@ -695,10 +738,10 @@ export default function PredictionsPage() {
               <select
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                 value={home}
-                onChange={(e) => setHome(e.target.value)}
+                onChange={(e: any) => setHome(e.target.value)}
               >
                 <option value="">Select home team...</option>
-                {filteredTeams.map((t) => (
+                {filteredTeams.map((t: any) => (
                   <option key={t.id} value={t.name}>
                     {t.name}
                   </option>
@@ -711,12 +754,12 @@ export default function PredictionsPage() {
               <select
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                 value={away}
-                onChange={(e) => setAway(e.target.value)}
+                onChange={(e: any) => setAway(e.target.value)}
               >
                 <option value="">Select away team...</option>
                 {filteredTeams
-                  .filter((t) => t.name !== home)
-                  .map((t) => (
+                  .filter((t: any) => t.name !== home)
+                  .map((t: any) => (
                     <option key={t.id} value={t.name}>
                       {t.name}
                     </option>
@@ -810,7 +853,7 @@ export default function PredictionsPage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2 lg:max-h-[calc(100vh-320px)] lg:overflow-y-auto lg:pr-1 scrollbar-thin">
-                  {liveResults.map((match) => (
+                  {liveResults.map((match: any) => (
                     <ResultCard
                       key={match.id}
                       match={match}
@@ -1007,9 +1050,10 @@ function ResultCard({
   isSelected,
   onSelect,
 }: {
+  key?: any
   match: any
   isSelected: boolean
-  onSelect: () => void
+  onSelect: () => any
 }) {
   const homeWon = match.home_score > match.away_score
   const awayWon = match.away_score > match.home_score
