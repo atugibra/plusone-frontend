@@ -5,8 +5,11 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 export type OddsFormat = 'decimal' | 'fractional' | 'american';
 export type Theme = 'dark' | 'light' | 'system';
 export type DefaultView = 'cards' | 'table';
+export type PredictionModel = 'blended' | 'statistical' | 'ai';
+export type StatsDepth = 'basic' | 'advanced' | 'expert';
 
 interface AppSettings {
+  // Appearance
   theme: Theme;
   oddsFormat: OddsFormat;
   defaultLeague: string;
@@ -14,7 +17,43 @@ interface AppSettings {
   compactMode: boolean;
   showConfidenceBadge: boolean;
   defaultView: DefaultView;
-  autoRefreshInterval: number; // minutes, 0 = off
+  autoRefreshInterval: number;
+
+  // Prediction Preferences
+  predictionModel: PredictionModel;
+  confidenceThreshold: number; // 0-100
+  homeAwayBias: number; // 0-100 (50 neutral)
+  formWeight: number; // 0-100 (50 neutral)
+  includeCups: boolean;
+
+  // Leagues
+  hideInsufficientData: boolean;
+  regionalFocus: string; // 'global', 'europe', etc
+
+  // Alerts
+  alertsPreMatch: boolean;
+  alertsHighConfidence: boolean;
+  alertsLiveScore: boolean;
+  alertsInjury: boolean;
+  alertMethod: 'push' | 'email' | 'sms';
+
+  // Betting
+  defaultStake: number;
+  bankrollLimit: number;
+  minValueEdge: number;
+  responsibleLimits: number;
+
+  // Data
+  statsDepth: StatsDepth;
+  includeXG: boolean;
+  historicalRange: number;
+  includePitchCondition: boolean;
+
+  // Account
+  isPrivateProfile: boolean;
+
+  // Setters
+  updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
   setTheme: (theme: Theme) => void;
   setOddsFormat: (format: OddsFormat) => void;
   setDefaultLeague: (leagueId: string) => void;
@@ -25,15 +64,47 @@ interface AppSettings {
   setAutoRefreshInterval: (mins: number) => void;
 }
 
-const defaultSettings: AppSettings = {
-  theme: 'system',
-  oddsFormat: 'decimal',
+const defaultSettingsState = {
+  theme: 'system' as Theme,
+  oddsFormat: 'decimal' as OddsFormat,
   defaultLeague: '',
   animationsEnabled: true,
   compactMode: false,
   showConfidenceBadge: true,
-  defaultView: 'cards',
+  defaultView: 'cards' as DefaultView,
   autoRefreshInterval: 0,
+
+  predictionModel: 'blended' as PredictionModel,
+  confidenceThreshold: 0,
+  homeAwayBias: 50,
+  formWeight: 50,
+  includeCups: true,
+
+  hideInsufficientData: false,
+  regionalFocus: 'global',
+
+  alertsPreMatch: false,
+  alertsHighConfidence: true,
+  alertsLiveScore: false,
+  alertsInjury: false,
+  alertMethod: 'push' as const,
+
+  defaultStake: 10,
+  bankrollLimit: 1000,
+  minValueEdge: 0,
+  responsibleLimits: 0,
+
+  statsDepth: 'advanced' as StatsDepth,
+  includeXG: true,
+  historicalRange: 10,
+  includePitchCondition: false,
+
+  isPrivateProfile: false,
+};
+
+const SettingsContext = createContext<AppSettings>({
+  ...defaultSettingsState,
+  updateSetting: () => {},
   setTheme: () => {},
   setOddsFormat: () => {},
   setDefaultLeague: () => {},
@@ -42,96 +113,59 @@ const defaultSettings: AppSettings = {
   setShowConfidenceBadge: () => {},
   setDefaultView: () => {},
   setAutoRefreshInterval: () => {},
-};
-
-const SettingsContext = createContext<AppSettings>(defaultSettings);
+});
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('system');
-  const [oddsFormat, setOddsFormatState] = useState<OddsFormat>('decimal');
-  const [defaultLeague, setDefaultLeagueState] = useState<string>('');
-  const [animationsEnabled, setAnimationsEnabledState] = useState<boolean>(true);
-  const [compactMode, setCompactModeState] = useState<boolean>(false);
-  const [showConfidenceBadge, setShowConfidenceBadgeState] = useState<boolean>(true);
-  const [defaultView, setDefaultViewState] = useState<DefaultView>('cards');
-  const [autoRefreshInterval, setAutoRefreshIntervalState] = useState<number>(0);
+  const [settings, setSettings] = useState(defaultSettingsState);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     try {
-      const storedTheme = localStorage.getItem('plusone-theme') as Theme;
-      if (storedTheme) setThemeState(storedTheme);
-
-      const storedFormat = localStorage.getItem('plusone-odds') as OddsFormat;
-      if (storedFormat) setOddsFormatState(storedFormat);
-
-      const storedLeague = localStorage.getItem('plusone-league');
-      if (storedLeague !== null) setDefaultLeagueState(storedLeague);
-
-      const storedAnimations = localStorage.getItem('plusone-animations');
-      if (storedAnimations !== null) setAnimationsEnabledState(storedAnimations === 'true');
-
-      const storedCompact = localStorage.getItem('plusone-compact');
-      if (storedCompact !== null) setCompactModeState(storedCompact === 'true');
-
-      const storedConfidence = localStorage.getItem('plusone-confidence');
-      if (storedConfidence !== null) setShowConfidenceBadgeState(storedConfidence !== 'false');
-
-      const storedView = localStorage.getItem('plusone-view') as DefaultView;
-      if (storedView) setDefaultViewState(storedView);
-
-      const storedRefresh = localStorage.getItem('plusone-refresh');
-      if (storedRefresh !== null) setAutoRefreshIntervalState(Number(storedRefresh));
+      const stored = localStorage.getItem('plusone-settings');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setSettings(prev => ({ ...prev, ...parsed }));
+      } else {
+        // Fallback to legacy individual keys
+        const legacyTheme = localStorage.getItem('plusone-theme') as Theme;
+        const legacyFormat = localStorage.getItem('plusone-odds') as OddsFormat;
+        const legacyAnimations = localStorage.getItem('plusone-animations');
+        const legacyCompact = localStorage.getItem('plusone-compact');
+        const legacyConfidence = localStorage.getItem('plusone-confidence');
+        const legacyView = localStorage.getItem('plusone-view') as DefaultView;
+        
+        setSettings(prev => ({
+          ...prev,
+          theme: legacyTheme || prev.theme,
+          oddsFormat: legacyFormat || prev.oddsFormat,
+          animationsEnabled: legacyAnimations !== null ? legacyAnimations === 'true' : prev.animationsEnabled,
+          compactMode: legacyCompact !== null ? legacyCompact === 'true' : prev.compactMode,
+          showConfidenceBadge: legacyConfidence !== null ? legacyConfidence !== 'false' : prev.showConfidenceBadge,
+          defaultView: legacyView || prev.defaultView
+        }));
+      }
     } catch (e) {
       console.error("Failed to load settings:", e);
     }
   }, []);
 
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    try { localStorage.setItem('plusone-theme', newTheme); } catch {}
-    applyTheme(newTheme);
-  };
-
-  const setOddsFormat = (newFormat: OddsFormat) => {
-    setOddsFormatState(newFormat);
-    try { localStorage.setItem('plusone-odds', newFormat); } catch {}
-  };
-
-  const setDefaultLeague = (newLeague: string) => {
-    setDefaultLeagueState(newLeague);
-    try { localStorage.setItem('plusone-league', newLeague); } catch {}
-  };
-
-  const setAnimationsEnabled = (enabled: boolean) => {
-    setAnimationsEnabledState(enabled);
-    try { localStorage.setItem('plusone-animations', String(enabled)); } catch {}
-  };
-
-  const setCompactMode = (enabled: boolean) => {
-    setCompactModeState(enabled);
-    try { localStorage.setItem('plusone-compact', String(enabled)); } catch {}
-  };
-
-  const setShowConfidenceBadge = (enabled: boolean) => {
-    setShowConfidenceBadgeState(enabled);
-    try { localStorage.setItem('plusone-confidence', String(enabled)); } catch {}
-  };
-
-  const setDefaultView = (view: DefaultView) => {
-    setDefaultViewState(view);
-    try { localStorage.setItem('plusone-view', view); } catch {}
-  };
-
-  const setAutoRefreshInterval = (mins: number) => {
-    setAutoRefreshIntervalState(mins);
-    try { localStorage.setItem('plusone-refresh', String(mins)); } catch {}
-  };
-
   useEffect(() => {
-    if (mounted) applyTheme(theme);
-  }, [theme, mounted]);
+    if (mounted) {
+      applyTheme(settings.theme);
+      try {
+        localStorage.setItem('plusone-settings', JSON.stringify(settings));
+        
+        // Keep legacy keys updated for anywhere they're used directly
+        localStorage.setItem('plusone-theme', settings.theme);
+        localStorage.setItem('plusone-odds', settings.oddsFormat);
+      } catch {}
+    }
+  }, [settings, mounted]);
+
+  const updateSetting = <K extends keyof typeof defaultSettingsState>(key: K, value: typeof defaultSettingsState[K]) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
 
   const applyTheme = (t: Theme) => {
     const root = window.document.documentElement;
@@ -144,10 +178,20 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Backwards compatibility functions
+  const setTheme = (t: Theme) => updateSetting('theme', t);
+  const setOddsFormat = (f: OddsFormat) => updateSetting('oddsFormat', f);
+  const setDefaultLeague = (l: string) => updateSetting('defaultLeague', l);
+  const setAnimationsEnabled = (e: boolean) => updateSetting('animationsEnabled', e);
+  const setCompactMode = (e: boolean) => updateSetting('compactMode', e);
+  const setShowConfidenceBadge = (e: boolean) => updateSetting('showConfidenceBadge', e);
+  const setDefaultView = (v: DefaultView) => updateSetting('defaultView', v);
+  const setAutoRefreshInterval = (m: number) => updateSetting('autoRefreshInterval', m);
+
   return (
     <SettingsContext.Provider value={{
-      theme, oddsFormat, defaultLeague, animationsEnabled,
-      compactMode, showConfidenceBadge, defaultView, autoRefreshInterval,
+      ...settings,
+      updateSetting,
       setTheme, setOddsFormat, setDefaultLeague, setAnimationsEnabled,
       setCompactMode, setShowConfidenceBadge, setDefaultView, setAutoRefreshInterval,
     }}>
@@ -169,7 +213,6 @@ export function formatOdds(decimalOdds: number, format: OddsFormat): string {
     }
   }
 
-  // Fractional (simple approximation)
   if (format === 'fractional') {
     const p = decimalOdds - 1;
     const fractions = [
