@@ -103,10 +103,10 @@ export function SettingsModal() {
             </div>
 
             {/* Layout */}
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
               
               {/* Sidebar */}
-              <div className="w-64 border-r border-border bg-secondary/10 overflow-y-auto py-2">
+              <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border bg-secondary/10 overflow-x-auto md:overflow-y-auto flex md:flex-col py-2 px-4 md:px-0 shrink-0">
                 {TABS.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
@@ -114,10 +114,10 @@ export function SettingsModal() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center gap-3 px-6 py-3 text-sm font-medium transition-colors ${
+                      className={`whitespace-nowrap rounded-md md:rounded-none flex items-center gap-3 px-4 md:px-6 py-2.5 md:py-3 text-sm font-medium transition-colors ${
                         isActive 
-                          ? "bg-secondary text-foreground border-r-2 border-primary" 
-                          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground border-r-2 border-transparent"
+                          ? "bg-secondary text-foreground md:border-r-2 md:border-primary" 
+                          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground md:border-r-2 md:border-transparent"
                       }`}
                     >
                       <Icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
@@ -128,8 +128,8 @@ export function SettingsModal() {
               </div>
 
               {/* Main Content Area */}
-              <div className="flex-1 overflow-y-auto p-8">
-                <div className="max-w-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                <div className="max-w-xl mx-auto md:mx-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   
                   {/* --- PREDICTIONS TAB --- */}
                   {activeTab === "predictions" && (
