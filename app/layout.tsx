@@ -42,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${_inter.variable} ${_jetbrainsMono.variable} font-sans antialiased`}>
         <SettingsProvider>
           {children}

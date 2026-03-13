@@ -7,7 +7,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useEffect, useState } from "react"
 import { getLeagues, getHealth, getMatches, getPlayers, getStandings } from "@/lib/api"
-// Removed static data imports
+import { useStore } from "@/lib/store"
 import {
   Trophy,
   Calendar,
@@ -34,6 +34,19 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [matchCount, setMatchCount] = useState(0)
   const [playerCount, setPlayerCount] = useState(0)
+
+  const { compactMode, animationsEnabled } = useStore()
+
+  // Base animation class, applied if enabled
+  const baseAnim = animationsEnabled 
+    ? "transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg" 
+    : "transition-colors"
+  const entryAnim = animationsEnabled ? "animate-in fade-in slide-in-from-bottom-4 duration-500" : ""
+  
+  // Compact classes
+  const gapClass = compactMode ? "gap-2" : "gap-4 lg:gap-6"
+  const paddingClass = compactMode ? "px-2 py-2" : "px-4 lg:px-6 py-6"
+  const cardPadding = compactMode ? "p-3" : "p-6"
 
   useEffect(() => {
     Promise.all([
@@ -89,9 +102,9 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="mx-auto max-w-[1280px] px-4 lg:px-6 py-6">
+      <main className={`mx-auto max-w-[1280px] ${paddingClass}`}>
         {/* Welcome Banner */}
-        <div className="mb-6 rounded-lg border border-border bg-card p-6">
+        <div className={`mb-6 rounded-lg border border-border bg-card ${cardPadding} ${entryAnim}`}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-xl font-bold text-foreground text-balance">
@@ -118,7 +131,7 @@ export default function DashboardPage() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className={`grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 ${entryAnim} delay-100`}>
           <KpiCard
             icon={Globe}
             label="Leagues Tracked"
@@ -150,7 +163,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className={`grid grid-cols-1 lg:grid-cols-3 ${gapClass} ${entryAnim} delay-200`}>
 
           {/* League Standings Preview */}
           <div className="lg:col-span-2 rounded-lg border border-border bg-card overflow-hidden">

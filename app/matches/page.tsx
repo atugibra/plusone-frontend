@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { getMatches, getLeagues } from "@/lib/api"
+import { useStore } from "@/lib/store"
 import { Match, League } from "@/lib/types"
 import { Calendar, Filter, Search, CheckCircle2, Clock, X } from "lucide-react"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
@@ -12,6 +13,16 @@ import Image from "next/image"
 type TabType = "all" | "results" | "fixtures"
 
 export default function MatchesPage() {
+  const { compactMode, animationsEnabled } = useStore()
+  
+  // Compact classes
+  const paddingClass = compactMode ? "px-2 py-2" : "px-4 lg:px-6 py-6"
+  const gapClass = compactMode ? "gap-1" : "gap-2"
+  const cardPadding = compactMode ? "p-2" : "p-4"
+  
+  // Base animation class
+  const entryAnim = animationsEnabled ? "animate-in fade-in slide-in-from-bottom-4 duration-500" : ""
+
   const [tab, setTab] = useState<TabType>("all")
   const [leagueFilter, setLeagueFilter] = useState("")
   const [search, setSearch] = useState("")
@@ -72,9 +83,9 @@ export default function MatchesPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="mx-auto max-w-[1280px] px-4 lg:px-6 py-6">
+      <main className={`mx-auto max-w-[1280px] ${paddingClass}`}>
         {/* Page Header */}
-        <div className="mb-6">
+        <div className={`mb-6 ${entryAnim}`}>
           <h1 className="text-xl font-bold text-foreground text-balance">Matches</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {loading ? "Loading..." : `${results} results, ${fixtures} upcoming fixtures`}
@@ -82,7 +93,7 @@ export default function MatchesPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-4 mb-4">
+        <div className={`flex items-center gap-4 mb-4 ${entryAnim} delay-100`}>
           <div className="flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5">
             {(["all", "results", "fixtures"] as TabType[]).map((t) => (
               <button
@@ -98,7 +109,7 @@ export default function MatchesPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6 flex-wrap">
+        <div className={`flex flex-col sm:flex-row gap-3 mb-6 flex-wrap ${entryAnim} delay-150`}>
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <input
@@ -138,7 +149,7 @@ export default function MatchesPage() {
         </div>
 
         {/* Match List */}
-        <div className="flex flex-col gap-2">
+        <div className={`flex flex-col ${gapClass} ${entryAnim} delay-200`}>
           {loading ? (
             <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card p-12 text-center">
               <p className="text-sm text-muted-foreground">Loading matches...</p>
@@ -153,7 +164,7 @@ export default function MatchesPage() {
               {displayed.map((match) => (
                 <div
                   key={match.id}
-                  className="rounded-lg border border-border bg-card p-4 hover:border-border/80 transition-colors"
+                  className={`rounded-lg border border-border bg-card ${cardPadding} hover:border-border/80 transition-colors`}
                 >
                   <div className="flex items-center justify-between gap-4">
                     {/* Left: Date & League */}

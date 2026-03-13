@@ -173,8 +173,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (t === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       root.classList.add(systemTheme);
+      root.style.colorScheme = systemTheme;
     } else {
       root.classList.add(t);
+      root.style.colorScheme = t;
     }
   };
 

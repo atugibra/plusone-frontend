@@ -14,6 +14,7 @@ import {
   getPredictionAccuracy,
   API,
 } from "@/lib/api"
+import { useStore } from "@/lib/store"
 import {
   TrendingUp,
   ChevronRight,
@@ -74,6 +75,16 @@ export default function PredictionsPage() {
 
   // Polling ref so we can cancel it on unmount
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const { compactMode, animationsEnabled } = useStore()
+  
+  // Compact classes
+  const gapClass = compactMode ? "gap-2" : "gap-4 lg:gap-6"
+  const paddingClass = compactMode ? "px-2 py-2" : "px-4 lg:px-6 py-6"
+  const cardPadding = compactMode ? "p-3" : "p-6"
+  
+  // Base animation class
+  const entryAnim = animationsEnabled ? "animate-in fade-in slide-in-from-bottom-4 duration-500" : ""
 
   useEffect(() => {
     getLeagues().then((data: any) => setLeagues(Array.isArray(data) ? data : []))
@@ -284,9 +295,9 @@ export default function PredictionsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="mx-auto max-w-[1280px] px-4 lg:px-6 py-6">
+      <main className={`mx-auto max-w-[1280px] ${paddingClass}`}>
         {/* Page Header */}
-        <div className="mb-6">
+        <div className={`mb-6 ${entryAnim}`}>
           <h1 className="text-xl font-bold text-foreground text-balance">Match Predictions</h1>
           <p className="text-sm text-muted-foreground mt-1">
             WPA-powered predictions with statistical team analysis
@@ -294,7 +305,7 @@ export default function PredictionsPage() {
         </div>
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className={`grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 ${entryAnim} delay-100`}>
           <StatCard
             icon={Target}
             label="Model Accuracy"
@@ -312,7 +323,7 @@ export default function PredictionsPage() {
         </div>
 
         {/* ── ML Prediction Engine Section ─────────────────────────────────── */}
-        <div className="rounded-lg border border-border bg-card mb-6 overflow-hidden">
+        <div className={`rounded-lg border border-border bg-card mb-6 overflow-hidden ${entryAnim} delay-150`}>
           {/* Engine Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-b border-border">
             <div className="flex items-center gap-3">
@@ -709,7 +720,7 @@ export default function PredictionsPage() {
         </div>
 
         {/* Generate Custom Prediction */}
-        <div className="rounded-lg border border-border bg-card p-6 mb-6">
+        <div className={`rounded-lg border border-border bg-card ${cardPadding} mb-6 ${entryAnim} delay-200`}>
           <h2 className="text-xl font-bold text-foreground mb-4">🔮 Generate Custom Prediction</h2>
           <div className="mb-4">
             <label className="text-xs text-muted-foreground mb-1.5 block">
