@@ -166,9 +166,9 @@ export function SettingsModal() {
                             className="bg-secondary border border-border rounded-md text-sm px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none"
                           >
                             <option value={0}>Show All</option>
-                            <option value={50}>High (>50%)</option>
-                            <option value={60}>Very High (>60%)</option>
-                            <option value={70}>Expert (>70%)</option>
+                            <option value={50}>High (&gt;50%)</option>
+                            <option value={60}>Very High (&gt;60%)</option>
+                            <option value={70}>Expert (&gt;70%)</option>
                           </select>
                         </SettingRow>
 
