@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useStore } from "@/lib/store";
 import {
   Settings, X, Moon, Sun, Monitor, LayoutGrid, LayoutList,
@@ -80,7 +81,7 @@ export function SettingsModal() {
         <Settings className="h-4 w-4" />
       </button>
 
-      {open && (
+      {open && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
           onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
@@ -490,7 +491,8 @@ export function SettingsModal() {
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
