@@ -110,9 +110,9 @@ export default function PerformancePage() {
                         {/* Stat Cards */}
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                             <StatCard icon={Target} label="Accuracy" value={`${Math.round((perf?.accuracy ?? 0) * 100)}%`} sub={`${perf?.n} predictions`} good={(perf?.accuracy ?? 0) > 0.45} />
-                            <StatCard icon={TrendingUp} label="Brier Score" value={String(perf?.brier_score ?? "—")} sub="Lower = better (0 is perfect)" good={(perf?.brier_score ?? 1) < 0.5} />
-                            <StatCard icon={BarChart3} label="RPS" value={String(perf?.rps ?? "—")} sub="Ranked Probability Score" good={(perf?.rps ?? 1) < 0.22} />
-                            <StatCard icon={CheckCircle2} label="Log Loss" value={String(perf?.log_loss ?? "—")} sub="Cross-entropy" good={(perf?.log_loss ?? 2) < 1.0} />
+                            <StatCard icon={TrendingUp} label="Brier Score" value={String(perf?.brier_score ?? "—")} sub="Lower = better (0 is perfect, 0.667 = random)" good={(perf?.brier_score ?? 1) < 0.5} />
+                            <StatCard icon={BarChart3} label="RPS" value={String(perf?.rps ?? "—")} sub="Ranked Probability Score (< 0.33 = beats random)" good={(perf?.rps ?? 1) < 0.33} />
+                            <StatCard icon={CheckCircle2} label="Log Loss" value={String(perf?.log_loss ?? "—")} sub="Cross-entropy (< 1.0 = good)" good={(perf?.log_loss ?? 2) < 1.0} />
                         </div>
 
                         {/* Significance */}
@@ -160,6 +160,7 @@ export default function PerformancePage() {
                                             <ReferenceLine y={0.5} stroke="oklch(0.6 0.18 27)" strokeDasharray="4 4" label={{ value: "Brier 0.5", fill: "oklch(0.55 0.01 260)", fontSize: 10 }} />
                                             <Line type="monotone" dataKey="rolling_brier" stroke="oklch(0.65 0.19 145)" dot={false} strokeWidth={2} name="Brier" />
                                             <Line type="monotone" dataKey="rolling_rps" stroke="oklch(0.6 0.18 220)" dot={false} strokeWidth={1.5} strokeDasharray="4 2" name="RPS" />
+                                            <Line type="monotone" dataKey="rolling_acc" stroke="oklch(0.7 0.18 55)" dot={false} strokeWidth={1.5} strokeDasharray="2 2" name="Accuracy %" yAxisId={1} />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -208,7 +209,7 @@ export default function PerformancePage() {
                                         <BarChart data={perLeague.leagues} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.01 260)" vertical={false} />
                                             <XAxis dataKey="league" tick={{ fontSize: 9, fill: "oklch(0.55 0.01 260)" }} tickLine={false} axisLine={false} />
-                                            <YAxis tick={{ fontSize: 10, fill: "oklch(0.55 0.01 260)" }} tickLine={false} axisLine={false} />
+                                            <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "oklch(0.55 0.01 260)" }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `${v}%`} />
                                             <Tooltip content={({ active, payload }: any) => {
                                                 if (!active || !payload?.length) return null
                                                 const d = payload[0].payload
@@ -218,10 +219,11 @@ export default function PerformancePage() {
                                                         <p className="text-muted-foreground">Matches: <strong className="text-foreground">{d.matches}</strong></p>
                                                         <p className="text-muted-foreground">Accuracy: <strong className="text-foreground">{d.accuracy}%</strong></p>
                                                         <p className="text-muted-foreground">Brier: <strong className="text-foreground">{d.brier}</strong></p>
+                                                        <p className="text-muted-foreground">RPS: <strong className="text-foreground">{d.rps}</strong></p>
                                                     </div>
                                                 )
                                             }} />
-                                            <Bar dataKey="accuracy" radius={[4, 4, 0, 0]}>
+                                            <Bar dataKey="accuracy" radius={[4, 4, 0, 0]} maxBarSize={80}>
                                                 {perLeague.leagues.map((row: any, i: number) => (
                                                     <Cell key={i} fill={row.accuracy >= 55 ? "oklch(0.65 0.19 145)" : row.accuracy >= 45 ? "oklch(0.7 0.18 55)" : "oklch(0.55 0.2 27)"} />
                                                 ))}
@@ -249,39 +251,66 @@ export default function PerformancePage() {
                         )}
 
                         {/* Confusion Matrix */}
-                        {confusion?.matrix && (
-                            <Section title="Confusion Matrix" sub="Where is the model going wrong? Rows = actual, Columns = predicted.">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-xs">
-                                        <thead>
-                                            <tr className="border-b border-border">
-                                                <th className="py-2 text-muted-foreground font-medium text-left">Actual \ Pred</th>
-                                                {["Away Win", "Draw", "Home Win"].map(l => <th key={l} className="py-2 text-muted-foreground font-medium text-right">{l}</th>)}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {["Away Win", "Draw", "Home Win"].map((actual, ri) => {
-                                                const row = confusion.matrix
-                                                const actKey = `Actual ${actual}`
-                                                return (
-                                                    <tr key={actual} className="border-b border-border/40">
-                                                        <td className="py-2 font-medium text-foreground">{actual}</td>
-                                                        {["Away Win", "Draw", "Home Win"].map((pred, ci) => {
-                                                            const v = row[actKey]?.[`Pred ${pred}`] ?? 0
-                                                            const isDiag = ri === ci
-                                                            return (
-                                                                <td key={pred} className={`py-2 text-right font-mono font-bold ${isDiag ? "text-success" : v > 0 ? "text-destructive" : "text-muted-foreground"}`}>{v}</td>
-                                                            )
-                                                        })}
+                        {confusion?.matrix && (() => {
+                            // Detect Home Win bias: check if all predictions land in Home Win column
+                            const matrix = confusion.matrix
+                            const totalPredictions = confusion.n_predictions ?? 0
+                            const predHomeWin = (["Away Win", "Draw", "Home Win"]
+                                .reduce((sum: number, actual: string) => sum + (matrix[`Actual ${actual}`]?.["Pred Home Win"] ?? 0), 0))
+                            const isBiased = totalPredictions > 0 && predHomeWin === totalPredictions
+                            const biasedToward = isBiased ? "Home Win" : null
+
+                            return (
+                                <>
+                                    <Section title="Confusion Matrix" sub="Where is the model going wrong? Rows = actual, Columns = predicted.">
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-xs">
+                                                <thead>
+                                                    <tr className="border-b border-border">
+                                                        <th className="py-2 text-muted-foreground font-medium text-left">Actual \ Pred</th>
+                                                        {["Away Win", "Draw", "Home Win"].map(l => <th key={l} className="py-2 text-muted-foreground font-medium text-right">{l}</th>)}
                                                     </tr>
-                                                )
-                                            })}
-                                        </tbody>
-                                    </table>
-                                    <p className="text-[10px] text-muted-foreground mt-3">Green diagonal = correct predictions · Red off-diagonal = errors · n={confusion.n_predictions}</p>
-                                </div>
-                            </Section>
-                        )}
+                                                </thead>
+                                                <tbody>
+                                                    {["Away Win", "Draw", "Home Win"].map((actual, ri) => {
+                                                        const row = confusion.matrix
+                                                        const actKey = `Actual ${actual}`
+                                                        return (
+                                                            <tr key={actual} className="border-b border-border/40">
+                                                                <td className="py-2 font-medium text-foreground">{actual}</td>
+                                                                {["Away Win", "Draw", "Home Win"].map((pred, ci) => {
+                                                                    const v = row[actKey]?.[`Pred ${pred}`] ?? 0
+                                                                    const isDiag = ri === ci
+                                                                    return (
+                                                                        <td key={pred} className={`py-2 text-right font-mono font-bold ${isDiag ? "text-success" : v > 0 ? "text-destructive" : "text-muted-foreground"}`}>{v}</td>
+                                                                    )
+                                                                })}
+                                                            </tr>
+                                                        )
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                            <p className="text-[10px] text-muted-foreground mt-3">Green diagonal = correct predictions · Red off-diagonal = errors · n={confusion.n_predictions}</p>
+                                        </div>
+                                    </Section>
+
+                                    {biasedToward && (
+                                        <div className="rounded-lg border border-warning/30 bg-warning/5 px-5 py-4 mt-6">
+                                            <p className="text-sm font-bold text-warning mb-1">⚠️ Model Bias Detected — Always Predicting {biasedToward}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                Every prediction in the log is classified as <strong className="text-foreground">{biasedToward}</strong>. This typically means:
+                                            </p>
+                                            <ul className="mt-2 space-y-1 text-xs text-muted-foreground list-disc list-inside">
+                                                <li>The ML model was trained on an imbalanced dataset (Home Win dominates historical data)</li>
+                                                <li>The model needs more data across all league and outcome types</li>
+                                                <li>Try <strong className="text-foreground">retraining</strong> the ML engine on the Predictions page after syncing richer data</li>
+                                                <li>The <strong className="text-foreground">Dynamic Consensus Engine</strong> blends DC + ML + Legacy to mitigate this bias</li>
+                                            </ul>
+                                        </div>
+                                    )}
+                                </>
+                            )
+                        })()}
                     </>
                 )}
             </main>

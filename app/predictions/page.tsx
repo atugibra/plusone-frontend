@@ -9,6 +9,7 @@ import {
   getPredictionStatus,
   trainPredictionModel,
   predictMatchById,
+  predictConsensus,
   getPredictionFixtures,
   getPredictionResults,
   getPredictionAccuracy,
@@ -29,6 +30,10 @@ import {
   Cpu,
   Calendar,
   Clock,
+  GitMerge,
+  CheckCircle2,
+  Circle,
+  SplitSquareHorizontal,
 } from "lucide-react"
 import {
   XAxis,
@@ -72,6 +77,12 @@ export default function PredictionsPage() {
   const [fixtureResult, setFixtureResult] = useState<Record<string, any> | null>(null)
   const [predictingFixture, setPredictingFixture] = useState<number | null>(null)
   const [fixtureLeague, setFixtureLeague] = useState("")
+
+  // Consensus Engine State
+  const [consensusFixture, setConsensusFixture] = useState<any | null>(null)
+  const [consensusResult, setConsensusResult] = useState<Record<string, any> | null>(null)
+  const [predictingConsensus, setPredictingConsensus] = useState<number | null>(null)
+  const [consensusLeague, setConsensusLeague] = useState("")
 
   // Polling ref so we can cancel it on unmount
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -255,6 +266,35 @@ export default function PredictionsPage() {
   const displayedFixtures = fixtureLeague
     ? fixtures.filter((f: any) => String(f.league_id) === fixtureLeague)
     : fixtures
+
+  const consensusFixtures = consensusLeague
+    ? fixtures.filter((f: any) => String(f.league_id) === consensusLeague)
+    : fixtures
+
+  const handleConsensusPredict = async (fixture: any) => {
+    setPredictingConsensus(fixture.id)
+    setConsensusFixture(fixture)
+    setConsensusResult(null)
+    try {
+      const data = await predictConsensus({
+        home_team_id: fixture.home_team_id,
+        away_team_id: fixture.away_team_id,
+        league_id:    fixture.league_id,
+        season_id:    fixture.season_id,
+      })
+      setConsensusResult(data)
+    } catch (err: any) {
+      const msg = err?.message || ""
+      if (msg.includes("503")) {
+        setConsensusResult({ error: "Backend unavailable (503). Try again in ~30 seconds." })
+      } else if (msg.includes("422")) {
+        setConsensusResult({ error: "ML engine not trained yet. Train the engine first, then retry." })
+      } else {
+        setConsensusResult({ error: msg || "Consensus prediction failed. Check backend logs." })
+      }
+    }
+    setPredictingConsensus(null)
+  }
 
   const filteredTeams = selectedLeague
     ? teams.filter((t: any) => String(t.league_id) === String(selectedLeague))
@@ -855,6 +895,275 @@ export default function PredictionsPage() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Dynamic Consensus Engine Section ──────────────────────────── */}
+        <div className={`rounded-lg border border-border bg-card mb-6 overflow-hidden ${entryAnim} delay-250`}>
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-b border-border">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                <GitMerge className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-foreground">Dynamic Consensus Engine</h2>
+                <p className="text-xs text-muted-foreground">
+                  Blends DC + ML + Legacy engines — weights adapt to historical accuracy
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-semibold">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary inline-block animate-pulse" />
+                3 Engines Active
+              </span>
+            </div>
+          </div>
+
+          {/* Fixture Picker */}
+          <div className="px-6 py-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+              <h3 className="text-sm font-semibold text-foreground">Select Fixture — Consensus Predict</h3>
+              <select
+                value={consensusLeague}
+                onChange={(e: any) => setConsensusLeague(e.target.value)}
+                className="appearance-none rounded-lg border border-border bg-secondary/30 px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-w-[160px]"
+              >
+                <option value="">All Leagues</option>
+                {leagues.map((l: any) => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {fixturesLoading ? (
+              <p className="text-sm text-muted-foreground animate-pulse py-4 text-center">Loading fixtures…</p>
+            ) : consensusFixtures.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No upcoming fixtures. Sync data first.</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                {consensusFixtures.map((fx: any) => (
+                  <div
+                    key={fx.id}
+                    className={`flex items-center justify-between rounded-lg border px-4 py-3 transition-colors cursor-pointer ${
+                      consensusFixture?.id === fx.id
+                        ? "border-primary/50 bg-primary/5"
+                        : "border-border hover:border-border/80 hover:bg-secondary/30"
+                    }`}
+                    onClick={() => handleConsensusPredict(fx)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5">
+                        {fx.home_team}
+                        <span className="text-muted-foreground font-normal text-xs">vs</span>
+                        {fx.away_team}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {fx.league} · {fx.match_date ? new Date(fx.match_date).toLocaleDateString() : "TBD"}
+                        {fx.gameweek ? ` · GW${fx.gameweek}` : ""}
+                      </p>
+                    </div>
+                    <button
+                      disabled={predictingConsensus === fx.id}
+                      className="ml-3 flex-shrink-0 inline-flex items-center gap-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50"
+                    >
+                      {predictingConsensus === fx.id ? (
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <GitMerge className="h-3 w-3" />
+                      )}
+                      {predictingConsensus === fx.id ? "Analysing…" : "Consensus"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Result Panel */}
+          {consensusResult && consensusFixture && (
+            <div className="border-t border-border px-6 py-5 bg-secondary/10">
+              {consensusResult.error ? (
+                <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+                  <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-destructive">Consensus Error</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{consensusResult.error}</p>
+                  </div>
+                </div>
+              ) : (() => {
+                const cs   = consensusResult.consensus  ?? {}
+                const eng  = consensusResult.engines     ?? {}
+                const wts  = consensusResult.weights_used ?? {}
+                const mkt  = consensusResult.markets     ?? {}
+                const agr  = consensusResult.agreement   ?? "split"
+                const match = consensusResult.match      ?? {}
+
+                const agreementMeta = {
+                  full:     { label: "Full Agreement",     color: "bg-success/10 text-success",   Icon: CheckCircle2 },
+                  majority: { label: "Majority Agreement", color: "bg-warning/10 text-warning",   Icon: Circle },
+                  split:    { label: "Split Decision",     color: "bg-destructive/10 text-destructive", Icon: SplitSquareHorizontal },
+                }[agr as string] ?? { label: agr, color: "bg-muted text-muted-foreground", Icon: Circle }
+
+                const confidenceColor =
+                  cs.confidence === "High"   ? "bg-success/10 text-success" :
+                  cs.confidence === "Medium" ? "bg-warning/10 text-warning" :
+                                              "bg-muted text-muted-foreground"
+
+                const dcW  = Math.round((wts.dc     ?? 0.45) * 100)
+                const mlW  = Math.round((wts.ml     ?? 0.35) * 100)
+                const legW = Math.round((wts.legacy ?? 0.20) * 100)
+
+                return (
+                  <div className="space-y-5">
+                    {/* Match header */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">{match.league}</p>
+                        <p className="text-lg font-bold text-foreground mt-0.5">
+                          {match.home_team} <span className="text-muted-foreground font-normal text-sm">vs</span> {match.away_team}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${confidenceColor}`}>
+                          {cs.confidence} Confidence
+                        </span>
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${agreementMeta.color}`}>
+                          <agreementMeta.Icon className="h-3.5 w-3.5" />
+                          {agreementMeta.label}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Consensus verdict */}
+                    <div className="rounded-xl bg-primary/8 border border-primary/25 px-6 py-4 text-center">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Consensus Prediction</p>
+                      <p className="text-2xl font-black text-primary">{cs.predicted_outcome}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{cs.confidence_score?.toFixed(1)}% certainty score</p>
+                    </div>
+
+                    {/* Blended probability tiles */}
+                    <div className="grid grid-cols-3 gap-3">
+                      {(["Home Win", "Draw", "Away Win"] as const).map((label, i) => {
+                        const keys = ["home_win", "draw", "away_win"] as const
+                        const val  = cs[keys[i]] ?? 0
+                        return (
+                          <div key={label} className="rounded-lg border border-border bg-card px-3 py-3 text-center">
+                            <p className="text-2xl font-black text-foreground">{Math.round(val * 100)}%</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Per-engine breakdown */}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Engine Breakdown</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {(["dc", "ml", "legacy"] as const).map((key) => {
+                          const e        = eng[key] ?? {}
+                          const labels   = { dc: "Dixon-Coles", ml: "ML Ensemble", legacy: "Legacy Heuristic" }
+                          const outcome  = e.predicted_outcome ?? "—"
+                          const outcomeColor =
+                            outcome === cs.predicted_outcome ? "text-success" : "text-muted-foreground"
+                          return (
+                            <div key={key} className="rounded-lg border border-border bg-card px-4 py-3">
+                              <p className="text-xs font-semibold text-muted-foreground mb-2">{labels[key]}</p>
+                              <p className={`text-sm font-bold mb-2 ${outcomeColor}`}>{outcome}</p>
+                              <div className="flex gap-2 text-xs text-muted-foreground">
+                                <span className="flex-1 text-center">
+                                  <span className="block font-semibold text-foreground">{Math.round((e.home_win ?? 0) * 100)}%</span>
+                                  H
+                                </span>
+                                <span className="flex-1 text-center">
+                                  <span className="block font-semibold text-foreground">{Math.round((e.draw ?? 0) * 100)}%</span>
+                                  D
+                                </span>
+                                <span className="flex-1 text-center">
+                                  <span className="block font-semibold text-foreground">{Math.round((e.away_win ?? 0) * 100)}%</span>
+                                  A
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Weight bar */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Engine Weights</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                          wts.source === "dynamic_historical"
+                            ? "bg-success/10 text-success"
+                            : "bg-warning/10 text-warning"
+                        }`}>
+                          {wts.source === "dynamic_historical" ? "⚡ Dynamic" : "Default"}
+                        </span>
+                      </div>
+                      <div className="flex rounded-lg overflow-hidden h-7 text-xs font-bold">
+                        <div
+                          className="flex items-center justify-center bg-primary/80 text-primary-foreground transition-all"
+                          style={{ width: `${dcW}%` }}
+                        >DC {dcW}%</div>
+                        <div
+                          className="flex items-center justify-center bg-info/70 text-white transition-all"
+                          style={{ width: `${mlW}%` }}
+                        >ML {mlW}%</div>
+                        <div
+                          className="flex items-center justify-center bg-warning/60 text-foreground transition-all"
+                          style={{ width: `${legW}%` }}
+                        >Leg {legW}%</div>
+                      </div>
+                    </div>
+
+                    {/* Markets */}
+                    {(mkt.btts_yes != null || mkt.over_2_5 != null) && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Markets</p>
+                        <div className="flex flex-wrap gap-2">
+                          {mkt.btts_yes != null && (
+                            <>
+                              <span className={`rounded-full px-3 py-1 text-xs font-semibold border ${
+                                mkt.btts_yes > 0.5 ? "border-success/30 bg-success/10 text-success" : "border-border bg-secondary/30 text-muted-foreground"
+                              }`}>
+                                BTTS Yes {Math.round(mkt.btts_yes * 100)}%
+                              </span>
+                              <span className={`rounded-full px-3 py-1 text-xs font-semibold border ${
+                                mkt.btts_no > 0.5 ? "border-success/30 bg-success/10 text-success" : "border-border bg-secondary/30 text-muted-foreground"
+                              }`}>
+                                BTTS No {Math.round((mkt.btts_no ?? 0) * 100)}%
+                              </span>
+                            </>
+                          )}
+                          {mkt.over_2_5 != null && (
+                            <>
+                              <span className={`rounded-full px-3 py-1 text-xs font-semibold border ${
+                                mkt.over_2_5 > 0.5 ? "border-primary/30 bg-primary/10 text-primary" : "border-border bg-secondary/30 text-muted-foreground"
+                              }`}>
+                                Over 2.5 {Math.round(mkt.over_2_5 * 100)}%
+                              </span>
+                              <span className={`rounded-full px-3 py-1 text-xs font-semibold border ${
+                                mkt.under_2_5 > 0.5 ? "border-primary/30 bg-primary/10 text-primary" : "border-border bg-secondary/30 text-muted-foreground"
+                              }`}>
+                                Under 2.5 {Math.round((mkt.under_2_5 ?? 0) * 100)}%
+                              </span>
+                            </>
+                          )}
+                          {mkt.home_xg != null && (
+                            <span className="rounded-full px-3 py-1 text-xs font-semibold border border-border bg-secondary/30 text-muted-foreground">
+                              xG {mkt.home_xg} – {mkt.away_xg}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )}
         </div>
