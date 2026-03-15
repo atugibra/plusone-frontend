@@ -160,7 +160,6 @@ export default function PerformancePage() {
                                             <ReferenceLine y={0.5} stroke="oklch(0.6 0.18 27)" strokeDasharray="4 4" label={{ value: "Brier 0.5", fill: "oklch(0.55 0.01 260)", fontSize: 10 }} />
                                             <Line type="monotone" dataKey="rolling_brier" stroke="oklch(0.65 0.19 145)" dot={false} strokeWidth={2} name="Brier" />
                                             <Line type="monotone" dataKey="rolling_rps" stroke="oklch(0.6 0.18 220)" dot={false} strokeWidth={1.5} strokeDasharray="4 2" name="RPS" />
-                                            <Line type="monotone" dataKey="rolling_acc" stroke="oklch(0.7 0.18 55)" dot={false} strokeWidth={1.5} strokeDasharray="2 2" name="Accuracy %" yAxisId={1} />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
