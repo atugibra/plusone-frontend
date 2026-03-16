@@ -10,10 +10,23 @@ import {
     ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell
 } from "recharts"
 
-function StatCard({ icon: Icon, label, value, sub, good }: { icon: React.ElementType; label: string; value: string; sub: string; good?: boolean }) {
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function getMarketAccuracy() {
+    const base = process.env.NEXT_PUBLIC_API_URL || ""
+    const res = await fetch(`${base}/api/performance/markets`)
+    if (!res.ok) throw new Error("Failed to fetch market accuracy")
+    return res.json()
+}
+
+function StatCard({ icon: Icon, label, value, sub, good }: {
+    icon: React.ElementType; label: string; value: string; sub: string; good?: boolean
+}) {
     return (
         <div className="rounded-lg border border-border bg-card p-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-muted-foreground mb-3"><Icon className="h-4 w-4" /></div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-muted-foreground mb-3">
+                <Icon className="h-4 w-4" />
+            </div>
             <p className={`text-2xl font-bold font-mono ${good === true ? "text-success" : good === false ? "text-destructive" : "text-foreground"}`}>{value}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
             <p className="text-[10px] text-muted-foreground/60 mt-1">{sub}</p>
@@ -23,7 +36,7 @@ function StatCard({ icon: Icon, label, value, sub, good }: { icon: React.Element
 
 function Section({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
     return (
-        <div className="rounded-lg border border-border bg-card p-5">
+        <div className="rounded-lg border border-border bg-card p-5 mb-6">
             <h3 className="text-sm font-semibold text-foreground mb-0.5">{title}</h3>
             {sub && <p className="text-xs text-muted-foreground mb-4">{sub}</p>}
             {!sub && <div className="mb-4" />}
@@ -32,23 +45,132 @@ function Section({ title, sub, children }: { title: string; sub?: string; childr
     )
 }
 
+// ─── Market Accuracy Section ──────────────────────────────────────────────────
+
+function MarketAccuracySection({ data }: { data: any }) {
+    if (!data) return null
+    const { overall, by_league } = data
+
+    const hasBtts   = overall?.btts?.total > 0
+    const hasOver25 = overall?.over_2_5?.total > 0
+
+    if (!hasBtts && !hasOver25) {
+        return (
+            <Section title="Market Accuracy — BTTS & Over 2.5" sub="Graded after matches complete via Evaluate Predictions">
+                <p className="text-xs text-muted-foreground">No market predictions graded yet. Run Evaluate Predictions after matches complete.</p>
+            </Section>
+        )
+    }
+
+    return (
+        <Section title="Market Accuracy — BTTS & Over 2.5" sub="How accurate are the market predictions? Graded after match results recorded.">
+            {/* Overall cards */}
+            <div className="grid grid-cols-2 gap-3 mb-5">
+                {hasBtts && (
+                    <div className="rounded-lg border border-border bg-secondary/10 p-4">
+                        <p className="text-xs text-muted-foreground mb-1">Both Teams to Score</p>
+                        <p className={`text-2xl font-bold font-mono ${
+                            (overall.btts.accuracy_pct ?? 0) >= 60 ? "text-success" :
+                            (overall.btts.accuracy_pct ?? 0) >= 45 ? "text-foreground" : "text-destructive"
+                        }`}>
+                            {overall.btts.accuracy_pct != null ? `${overall.btts.accuracy_pct}%` : "—"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                            {overall.btts.correct}/{overall.btts.total} correct
+                        </p>
+                    </div>
+                )}
+                {hasOver25 && (
+                    <div className="rounded-lg border border-border bg-secondary/10 p-4">
+                        <p className="text-xs text-muted-foreground mb-1">Over 2.5 Goals</p>
+                        <p className={`text-2xl font-bold font-mono ${
+                            (overall.over_2_5.accuracy_pct ?? 0) >= 60 ? "text-success" :
+                            (overall.over_2_5.accuracy_pct ?? 0) >= 45 ? "text-foreground" : "text-destructive"
+                        }`}>
+                            {overall.over_2_5.accuracy_pct != null ? `${overall.over_2_5.accuracy_pct}%` : "—"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                            {overall.over_2_5.correct}/{overall.over_2_5.total} correct
+                        </p>
+                    </div>
+                )}
+            </div>
+
+            {/* xG averages */}
+            {(overall.avg_home_xg > 0 || overall.avg_away_xg > 0) && (
+                <div className="flex gap-4 text-xs text-muted-foreground mb-5">
+                    <span>Avg Home xG: <strong className="text-foreground">{overall.avg_home_xg}</strong></span>
+                    <span>Avg Away xG: <strong className="text-foreground">{overall.avg_away_xg}</strong></span>
+                </div>
+            )}
+
+            {/* By league breakdown */}
+            {by_league?.length > 0 && (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                        <thead>
+                            <tr className="border-b border-border">
+                                <th className="py-2 text-muted-foreground font-medium text-left">League</th>
+                                <th className="py-2 text-muted-foreground font-medium text-right">BTTS Acc</th>
+                                <th className="py-2 text-muted-foreground font-medium text-right">BTTS n</th>
+                                <th className="py-2 text-muted-foreground font-medium text-right">O2.5 Acc</th>
+                                <th className="py-2 text-muted-foreground font-medium text-right">O2.5 n</th>
+                                <th className="py-2 text-muted-foreground font-medium text-right">Avg xG</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {by_league.map((row: any, i: number) => (
+                                <tr key={i} className="border-b border-border/40 hover:bg-secondary/10">
+                                    <td className="py-2 font-medium text-foreground">{row.league}</td>
+                                    <td className={`py-2 text-right font-mono font-bold ${
+                                        row.btts_accuracy >= 60 ? "text-success" :
+                                        row.btts_accuracy >= 45 ? "text-foreground" :
+                                        row.btts_accuracy != null ? "text-destructive" : "text-muted-foreground"
+                                    }`}>
+                                        {row.btts_accuracy != null ? `${row.btts_accuracy}%` : "—"}
+                                    </td>
+                                    <td className="py-2 text-right font-mono text-muted-foreground">{row.btts_total}</td>
+                                    <td className={`py-2 text-right font-mono font-bold ${
+                                        row.over25_accuracy >= 60 ? "text-success" :
+                                        row.over25_accuracy >= 45 ? "text-foreground" :
+                                        row.over25_accuracy != null ? "text-destructive" : "text-muted-foreground"
+                                    }`}>
+                                        {row.over25_accuracy != null ? `${row.over25_accuracy}%` : "—"}
+                                    </td>
+                                    <td className="py-2 text-right font-mono text-muted-foreground">{row.over25_total}</td>
+                                    <td className="py-2 text-right font-mono text-muted-foreground">
+                                        {row.avg_home_xg}/{row.avg_away_xg}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </Section>
+    )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
 export default function PerformancePage() {
-    const [perf, setPerf] = useState<any>(null)
-    const [drift, setDrift] = useState<any>(null)
-    const [cal, setCal] = useState<any>(null)
+    const [perf, setPerf]           = useState<any>(null)
+    const [drift, setDrift]         = useState<any>(null)
+    const [cal, setCal]             = useState<any>(null)
     const [perLeague, setPerLeague] = useState<any>(null)
     const [confusion, setConfusion] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState("")
+    const [markets, setMarkets]     = useState<any>(null)
+    const [loading, setLoading]     = useState(true)
+    const [error, setError]         = useState("")
     const [evaluating, setEvaluating] = useState(false)
-    const [evalMsg, setEvalMsg] = useState("")
+    const [evalMsg, setEvalMsg]     = useState("")
 
     const runEvaluate = async () => {
         setEvaluating(true)
         setEvalMsg("")
         try {
             const res = await evaluatePredictions()
-            setEvalMsg(`✅ ${res.evaluated} prediction(s) graded. Reload the page to see updated metrics.`)
+            setEvalMsg(`✅ ${res.evaluated} prediction(s) graded. Reload to see updated metrics.`)
         } catch (e: any) {
             setEvalMsg(`❌ Evaluate failed: ${e?.message || "unknown error"}`)
         } finally {
@@ -57,8 +179,18 @@ export default function PerformancePage() {
     }
 
     useEffect(() => {
-        Promise.all([getPerformance(), getPerformanceDrift(), getCalibration(), getPerLeague(), getConfusionMatrix()])
-            .then(([p, d, c, l, cm]) => { setPerf(p); setDrift(d); setCal(c); setPerLeague(l); setConfusion(cm) })
+        Promise.all([
+            getPerformance(),
+            getPerformanceDrift(),
+            getCalibration(),
+            getPerLeague(),
+            getConfusionMatrix(),
+            getMarketAccuracy(),
+        ])
+            .then(([p, d, c, l, cm, mk]) => {
+                setPerf(p); setDrift(d); setCal(c)
+                setPerLeague(l); setConfusion(cm); setMarkets(mk)
+            })
             .catch(e => setError(e.message || "Failed to load metrics."))
             .finally(() => setLoading(false))
     }, [])
@@ -75,12 +207,28 @@ export default function PerformancePage() {
         <div className="min-h-screen bg-background">
             <Header />
             <main className="mx-auto max-w-[1280px] px-4 lg:px-6 py-6">
-                <div className="mb-6">
-                    <h1 className="text-xl font-bold text-foreground">Model Performance</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Brier Score · RPS · Log Loss · Calibration · Confusion Matrix · ROI — from <code className="text-primary">prediction_log</code>
-                    </p>
+                <div className="mb-6 flex items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-xl font-bold text-foreground">Model Performance</h1>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Brier Score · RPS · Log Loss · Calibration · Confusion Matrix · ROI — from <code className="text-primary">prediction_log</code>
+                        </p>
+                    </div>
+                    <button
+                        onClick={runEvaluate}
+                        disabled={evaluating}
+                        className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold hover:bg-secondary/30 transition-colors disabled:opacity-50 flex-shrink-0"
+                    >
+                        <RefreshCw className={`h-3.5 w-3.5 ${evaluating ? "animate-spin" : ""}`} />
+                        {evaluating ? "Evaluating…" : "Evaluate Predictions"}
+                    </button>
                 </div>
+
+                {evalMsg && (
+                    <div className="rounded-lg border border-border bg-card px-4 py-3 text-xs text-muted-foreground mb-4">
+                        {evalMsg}
+                    </div>
+                )}
 
                 {error && (
                     <div className="rounded-lg border border-destructive bg-destructive/5 px-4 py-3 flex items-center gap-2 mb-6 text-sm text-destructive">
@@ -92,17 +240,37 @@ export default function PerformancePage() {
                     <div className="rounded-lg border border-border bg-card p-12 text-center">
                         <BarChart3 className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-30" />
                         <p className="text-sm font-semibold text-foreground mb-1">No completed predictions yet</p>
-                        <p className="text-xs text-muted-foreground mb-5">Performance metrics appear once matches in <code>prediction_log</code> have actual results recorded.</p>
-                        <button
-                            onClick={runEvaluate}
-                            disabled={evaluating}
-                            className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
-                        >
-                            <RefreshCw className={`h-4 w-4 ${evaluating ? "animate-spin" : ""}`} />
-                            {evaluating ? "Evaluating…" : "Evaluate Predictions"}
-                        </button>
-                        {evalMsg && (
-                            <p className="text-xs mt-3 text-muted-foreground">{evalMsg}</p>
+                        <p className="text-xs text-muted-foreground mb-5">
+                            Performance metrics appear once matches in <code>prediction_log</code> have actual results recorded.
+                            Click "Evaluate Predictions" above after matches complete.
+                        </p>
+                        {/* Show per-league even when no evaluated predictions */}
+                        {perLeague?.leagues?.length > 0 && (
+                            <div className="text-left mt-6">
+                                <p className="text-xs font-semibold text-foreground mb-3">
+                                    Predictions logged across {perLeague.leagues.length} leagues (awaiting results):
+                                </p>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr className="border-b border-border">
+                                                <th className="py-2 text-muted-foreground font-medium text-left">League</th>
+                                                <th className="py-2 text-muted-foreground font-medium text-right">Predictions</th>
+                                                <th className="py-2 text-muted-foreground font-medium text-right">Evaluated</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {perLeague.leagues.map((row: any, i: number) => (
+                                                <tr key={i} className="border-b border-border/40">
+                                                    <td className="py-2 text-foreground">{row.league}</td>
+                                                    <td className="py-2 text-right font-mono">{row.matches}</td>
+                                                    <td className="py-2 text-right font-mono text-muted-foreground">{row.evaluated}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         )}
                     </div>
                 ) : (
@@ -202,45 +370,67 @@ export default function PerformancePage() {
 
                         {/* Per-League */}
                         {perLeague?.leagues?.length > 0 && (
-                            <Section title="Per-League Performance" sub="Ranked by Brier score (lower = better)">
-                                <div className="h-[200px] w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={perLeague.leagues} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.01 260)" vertical={false} />
-                                            <XAxis dataKey="league" tick={{ fontSize: 9, fill: "oklch(0.55 0.01 260)" }} tickLine={false} axisLine={false} />
-                                            <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "oklch(0.55 0.01 260)" }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `${v}%`} />
-                                            <Tooltip content={({ active, payload }: any) => {
-                                                if (!active || !payload?.length) return null
-                                                const d = payload[0].payload
-                                                return (
-                                                    <div className="rounded-lg border border-border bg-card p-3 shadow-xl text-xs">
-                                                        <p className="font-semibold text-foreground">{d.league}</p>
-                                                        <p className="text-muted-foreground">Matches: <strong className="text-foreground">{d.matches}</strong></p>
-                                                        <p className="text-muted-foreground">Accuracy: <strong className="text-foreground">{d.accuracy}%</strong></p>
-                                                        <p className="text-muted-foreground">Brier: <strong className="text-foreground">{d.brier}</strong></p>
-                                                        <p className="text-muted-foreground">RPS: <strong className="text-foreground">{d.rps}</strong></p>
-                                                    </div>
-                                                )
-                                            }} />
-                                            <Bar dataKey="accuracy" radius={[4, 4, 0, 0]} maxBarSize={80}>
-                                                {perLeague.leagues.map((row: any, i: number) => (
-                                                    <Cell key={i} fill={row.accuracy >= 55 ? "oklch(0.65 0.19 145)" : row.accuracy >= 45 ? "oklch(0.7 0.18 55)" : "oklch(0.55 0.2 27)"} />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                                <div className="mt-4 overflow-x-auto">
+                            <Section title="Per-League Performance" sub="Ranked by Brier score (lower = better). Leagues without evaluated results show prediction counts only.">
+                                {/* Chart — only leagues with accuracy data */}
+                                {perLeague.leagues.filter((l: any) => l.accuracy != null).length > 0 && (
+                                    <div className="h-[200px] w-full mb-4">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart
+                                                data={perLeague.leagues.filter((l: any) => l.accuracy != null)}
+                                                margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.01 260)" vertical={false} />
+                                                <XAxis dataKey="league" tick={{ fontSize: 9, fill: "oklch(0.55 0.01 260)" }} tickLine={false} axisLine={false} />
+                                                <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "oklch(0.55 0.01 260)" }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `${v}%`} />
+                                                <Tooltip content={({ active, payload }: any) => {
+                                                    if (!active || !payload?.length) return null
+                                                    const d = payload[0].payload
+                                                    return (
+                                                        <div className="rounded-lg border border-border bg-card p-3 shadow-xl text-xs">
+                                                            <p className="font-semibold text-foreground">{d.league}</p>
+                                                            <p className="text-muted-foreground">Predictions: <strong className="text-foreground">{d.matches}</strong></p>
+                                                            <p className="text-muted-foreground">Evaluated: <strong className="text-foreground">{d.evaluated}</strong></p>
+                                                            <p className="text-muted-foreground">Accuracy: <strong className="text-foreground">{d.accuracy}%</strong></p>
+                                                            {d.brier != null && <p className="text-muted-foreground">Brier: <strong className="text-foreground">{d.brier}</strong></p>}
+                                                            {d.rps != null && <p className="text-muted-foreground">RPS: <strong className="text-foreground">{d.rps}</strong></p>}
+                                                        </div>
+                                                    )
+                                                }} />
+                                                <Bar dataKey="accuracy" radius={[4, 4, 0, 0]} maxBarSize={80}>
+                                                    {perLeague.leagues.filter((l: any) => l.accuracy != null).map((row: any, i: number) => (
+                                                        <Cell key={i} fill={row.accuracy >= 55 ? "oklch(0.65 0.19 145)" : row.accuracy >= 45 ? "oklch(0.7 0.18 55)" : "oklch(0.55 0.2 27)"} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                )}
+                                <div className="overflow-x-auto">
                                     <table className="w-full text-xs">
-                                        <thead><tr className="border-b border-border">{["League", "Matches", "Accuracy", "Brier", "RPS"].map(h => <th key={h} className="py-2 text-muted-foreground font-medium text-right first:text-left">{h}</th>)}</tr></thead>
+                                        <thead>
+                                            <tr className="border-b border-border">
+                                                {["League", "Predictions", "Evaluated", "Accuracy", "Brier", "RPS"].map(h => (
+                                                    <th key={h} className="py-2 text-muted-foreground font-medium text-right first:text-left">{h}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
                                         <tbody>
                                             {perLeague.leagues.map((row: any, i: number) => (
                                                 <tr key={i} className="border-b border-border/40 hover:bg-secondary/10">
-                                                    <td className="py-2">{row.league}</td>
+                                                    <td className="py-2 text-foreground">{row.league}</td>
                                                     <td className="py-2 text-right font-mono">{row.matches}</td>
-                                                    <td className={`py-2 text-right font-mono font-bold ${row.accuracy >= 55 ? "text-success" : row.accuracy < 40 ? "text-destructive" : "text-foreground"}`}>{row.accuracy}%</td>
-                                                    <td className={`py-2 text-right font-mono ${row.brier < 0.45 ? "text-success" : "text-foreground"}`}>{row.brier}</td>
-                                                    <td className="py-2 text-right font-mono">{row.rps}</td>
+                                                    <td className="py-2 text-right font-mono text-muted-foreground">{row.evaluated}</td>
+                                                    <td className={`py-2 text-right font-mono font-bold ${
+                                                        row.accuracy == null ? "text-muted-foreground" :
+                                                        row.accuracy >= 55 ? "text-success" :
+                                                        row.accuracy < 40 ? "text-destructive" : "text-foreground"
+                                                    }`}>
+                                                        {row.accuracy != null ? `${row.accuracy}%` : "—"}
+                                                    </td>
+                                                    <td className={`py-2 text-right font-mono ${row.brier != null && row.brier < 0.45 ? "text-success" : "text-foreground"}`}>
+                                                        {row.brier ?? "—"}
+                                                    </td>
+                                                    <td className="py-2 text-right font-mono text-muted-foreground">{row.rps ?? "—"}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -249,15 +439,16 @@ export default function PerformancePage() {
                             </Section>
                         )}
 
+                        {/* Market Accuracy */}
+                        <MarketAccuracySection data={markets} />
+
                         {/* Confusion Matrix */}
                         {confusion?.matrix && (() => {
-                            // Detect Home Win bias: check if all predictions land in Home Win column
                             const matrix = confusion.matrix
                             const totalPredictions = confusion.n_predictions ?? 0
                             const predHomeWin = (["Away Win", "Draw", "Home Win"]
                                 .reduce((sum: number, actual: string) => sum + (matrix[`Actual ${actual}`]?.["Pred Home Win"] ?? 0), 0))
                             const isBiased = totalPredictions > 0 && predHomeWin === totalPredictions
-                            const biasedToward = isBiased ? "Home Win" : null
 
                             return (
                                 <>
@@ -267,18 +458,19 @@ export default function PerformancePage() {
                                                 <thead>
                                                     <tr className="border-b border-border">
                                                         <th className="py-2 text-muted-foreground font-medium text-left">Actual \ Pred</th>
-                                                        {["Away Win", "Draw", "Home Win"].map(l => <th key={l} className="py-2 text-muted-foreground font-medium text-right">{l}</th>)}
+                                                        {["Away Win", "Draw", "Home Win"].map(l => (
+                                                            <th key={l} className="py-2 text-muted-foreground font-medium text-right">{l}</th>
+                                                        ))}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {["Away Win", "Draw", "Home Win"].map((actual, ri) => {
-                                                        const row = confusion.matrix
                                                         const actKey = `Actual ${actual}`
                                                         return (
                                                             <tr key={actual} className="border-b border-border/40">
                                                                 <td className="py-2 font-medium text-foreground">{actual}</td>
                                                                 {["Away Win", "Draw", "Home Win"].map((pred, ci) => {
-                                                                    const v = row[actKey]?.[`Pred ${pred}`] ?? 0
+                                                                    const v = matrix[actKey]?.[`Pred ${pred}`] ?? 0
                                                                     const isDiag = ri === ci
                                                                     return (
                                                                         <td key={pred} className={`py-2 text-right font-mono font-bold ${isDiag ? "text-success" : v > 0 ? "text-destructive" : "text-muted-foreground"}`}>{v}</td>
@@ -289,22 +481,16 @@ export default function PerformancePage() {
                                                     })}
                                                 </tbody>
                                             </table>
-                                            <p className="text-[10px] text-muted-foreground mt-3">Green diagonal = correct predictions · Red off-diagonal = errors · n={confusion.n_predictions}</p>
+                                            <p className="text-[10px] text-muted-foreground mt-3">
+                                                Green diagonal = correct predictions · Red off-diagonal = errors · n={confusion.n_predictions}
+                                            </p>
                                         </div>
                                     </Section>
 
-                                    {biasedToward && (
-                                        <div className="rounded-lg border border-warning/30 bg-warning/5 px-5 py-4 mt-6">
-                                            <p className="text-sm font-bold text-warning mb-1">⚠️ Model Bias Detected — Always Predicting {biasedToward}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                Every prediction in the log is classified as <strong className="text-foreground">{biasedToward}</strong>. This typically means:
-                                            </p>
-                                            <ul className="mt-2 space-y-1 text-xs text-muted-foreground list-disc list-inside">
-                                                <li>The ML model was trained on an imbalanced dataset (Home Win dominates historical data)</li>
-                                                <li>The model needs more data across all league and outcome types</li>
-                                                <li>Try <strong className="text-foreground">retraining</strong> the ML engine on the Predictions page after syncing richer data</li>
-                                                <li>The <strong className="text-foreground">Dynamic Consensus Engine</strong> blends DC + ML + Legacy to mitigate this bias</li>
-                                            </ul>
+                                    {isBiased && (
+                                        <div className="rounded-lg border border-warning/30 bg-warning/5 px-5 py-4 mt-0">
+                                            <p className="text-sm font-bold text-warning mb-1">⚠️ Model Bias Detected — Always Predicting Home Win</p>
+                                            <p className="text-xs text-muted-foreground">Every prediction is classified as <strong className="text-foreground">Home Win</strong>. The ML model was likely trained on imbalanced data. Try retraining on the Predictions page, or use the Dynamic Consensus Engine which blends DC + ML + Legacy to mitigate this bias.</p>
                                         </div>
                                     )}
                                 </>
