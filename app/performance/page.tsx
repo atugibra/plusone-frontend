@@ -13,10 +13,14 @@ import {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function getMarketAccuracy() {
-    const base = process.env.NEXT_PUBLIC_API_URL || ""
-    const res = await fetch(`${base}/api/performance/markets`)
-    if (!res.ok) throw new Error("Failed to fetch market accuracy")
-    return res.json()
+    try {
+        const base = process.env.NEXT_PUBLIC_API_URL || ""
+        const res = await fetch(`${base}/api/performance/markets`)
+        if (!res.ok) return null
+        return res.json()
+    } catch {
+        return null
+    }
 }
 
 function StatCard({ icon: Icon, label, value, sub, good }: {
@@ -178,7 +182,7 @@ export default function PerformancePage() {
         }
     }
 
-    useEffect(() => {
+        useEffect(() => {
         Promise.all([
             getPerformance(),
             getPerformanceDrift(),
