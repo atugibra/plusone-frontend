@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { getPerformance, getPerformanceDrift, getCalibration, getPerLeague, getConfusionMatrix, evaluatePredictions } from "@/lib/api"
-import { BarChart3, TrendingUp, Target, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react"
+import { BarChart3, TrendingUp, Target, CheckCircle2, AlertCircle, RefreshCw, Zap } from "lucide-react"
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell
@@ -68,7 +68,6 @@ function MarketAccuracySection({ data }: { data: any }) {
 
     return (
         <Section title="Market Accuracy — BTTS & Over 2.5" sub="How accurate are the market predictions? Graded after match results recorded.">
-            {/* Overall cards */}
             <div className="grid grid-cols-2 gap-3 mb-5">
                 {hasBtts && (
                     <div className="rounded-lg border border-border bg-secondary/10 p-4">
@@ -100,7 +99,6 @@ function MarketAccuracySection({ data }: { data: any }) {
                 )}
             </div>
 
-            {/* xG averages */}
             {(overall.avg_home_xg > 0 || overall.avg_away_xg > 0) && (
                 <div className="flex gap-4 text-xs text-muted-foreground mb-5">
                     <span>Avg Home xG: <strong className="text-foreground">{overall.avg_home_xg}</strong></span>
@@ -108,7 +106,6 @@ function MarketAccuracySection({ data }: { data: any }) {
                 </div>
             )}
 
-            {/* By league breakdown */}
             {by_league?.length > 0 && (
                 <div className="overflow-x-auto">
                     <table className="w-full text-xs">
@@ -166,8 +163,14 @@ export default function PerformancePage() {
     const [markets, setMarkets]     = useState<any>(null)
     const [loading, setLoading]     = useState(true)
     const [error, setError]         = useState("")
+
+    // Evaluate state
     const [evaluating, setEvaluating] = useState(false)
-    const [evalMsg, setEvalMsg]     = useState("")
+    const [evalMsg, setEvalMsg]       = useState("")
+
+    // Recalibrate state
+    const [calibrating, setCalibrating] = useState(false)
+    const [calMsg, setCalMsg]           = useState("")
 
     const runEvaluate = async () => {
         setEvaluating(true)
@@ -182,7 +185,27 @@ export default function PerformancePage() {
         }
     }
 
-        useEffect(() => {
+    const runRecalibrate = async () => {
+        setCalibrating(true)
+        setCalMsg("")
+        try {
+            const base = process.env.NEXT_PUBLIC_API_URL || ""
+            const res  = await fetch(`${base}/api/predictions/recalibrate`, { method: "POST" })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.detail || "Recalibration failed")
+            setCalMsg(
+                `✅ Calibrated on ${data.n_samples} predictions — ` +
+                `accuracy ${data.pre_accuracy_pct}% → ${data.post_accuracy_pct}% ` +
+                `(${data.improvement_pct >= 0 ? "+" : ""}${data.improvement_pct}%)`
+            )
+        } catch (e: any) {
+            setCalMsg(`❌ Recalibrate failed: ${e?.message || "unknown error"}`)
+        } finally {
+            setCalibrating(false)
+        }
+    }
+
+    useEffect(() => {
         Promise.all([
             getPerformance(),
             getPerformanceDrift(),
@@ -211,26 +234,57 @@ export default function PerformancePage() {
         <div className="min-h-screen bg-background">
             <Header />
             <main className="mx-auto max-w-[1280px] px-4 lg:px-6 py-6">
+
+                {/* ── Header + Action Buttons ── */}
                 <div className="mb-6 flex items-start justify-between gap-4">
                     <div>
                         <h1 className="text-xl font-bold text-foreground">Model Performance</h1>
                         <p className="text-sm text-muted-foreground mt-1">
-                            Brier Score · RPS · Log Loss · Calibration · Confusion Matrix · ROI — from <code className="text-primary">prediction_log</code>
+                            Brier Score · RPS · Log Loss · Calibration · Confusion Matrix · ROI — from{" "}
+                            <code className="text-primary">prediction_log</code>
                         </p>
                     </div>
-                    <button
-                        onClick={runEvaluate}
-                        disabled={evaluating}
-                        className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold hover:bg-secondary/30 transition-colors disabled:opacity-50 flex-shrink-0"
-                    >
-                        <RefreshCw className={`h-3.5 w-3.5 ${evaluating ? "animate-spin" : ""}`} />
-                        {evaluating ? "Evaluating…" : "Evaluate Predictions"}
-                    </button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Evaluate Predictions */}
+                        <button
+                            onClick={runEvaluate}
+                            disabled={evaluating}
+                            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold hover:bg-secondary/30 transition-colors disabled:opacity-50"
+                        >
+                            <RefreshCw className={`h-3.5 w-3.5 ${evaluating ? "animate-spin" : ""}`} />
+                            {evaluating ? "Evaluating…" : "Evaluate Predictions"}
+                        </button>
+
+                        {/* Recalibrate Model */}
+                        <button
+                            onClick={runRecalibrate}
+                            disabled={calibrating}
+                            className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+                        >
+                            <Zap className={`h-3.5 w-3.5 ${calibrating ? "animate-pulse" : ""}`} />
+                            {calibrating ? "Calibrating…" : "Recalibrate Model"}
+                        </button>
+                    </div>
                 </div>
 
+                {/* ── Status messages ── */}
                 {evalMsg && (
-                    <div className="rounded-lg border border-border bg-card px-4 py-3 text-xs text-muted-foreground mb-4">
+                    <div className="rounded-lg border border-border bg-card px-4 py-3 text-xs text-muted-foreground mb-3">
                         {evalMsg}
+                    </div>
+                )}
+                {calMsg && (
+                    <div className={`rounded-lg border px-4 py-3 text-xs mb-4 ${
+                        calMsg.startsWith("✅")
+                            ? "border-success/30 bg-success/5 text-success"
+                            : "border-destructive/30 bg-destructive/5 text-destructive"
+                    }`}>
+                        {calMsg}
+                        {calMsg.startsWith("✅") && (
+                            <span className="text-muted-foreground ml-2">
+                                — Model will now apply adjusted probabilities to all future predictions.
+                            </span>
+                        )}
                     </div>
                 )}
 
@@ -240,6 +294,14 @@ export default function PerformancePage() {
                     </div>
                 )}
 
+                {/* ── Workflow hint ── */}
+                <div className="rounded-lg border border-border bg-secondary/5 px-4 py-3 mb-6 text-xs text-muted-foreground">
+                    <strong className="text-foreground">Weekly workflow:</strong>{" "}
+                    After matches complete → <span className="text-foreground font-medium">Evaluate Predictions</span> (grades results) →{" "}
+                    <span className="text-foreground font-medium">Recalibrate Model</span> (ML learns from mistakes).
+                    Requires at least 15 evaluated predictions to calibrate.
+                </div>
+
                 {empty ? (
                     <div className="rounded-lg border border-border bg-card p-12 text-center">
                         <BarChart3 className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-30" />
@@ -248,7 +310,6 @@ export default function PerformancePage() {
                             Performance metrics appear once matches in <code>prediction_log</code> have actual results recorded.
                             Click "Evaluate Predictions" above after matches complete.
                         </p>
-                        {/* Show per-league even when no evaluated predictions */}
                         {perLeague?.leagues?.length > 0 && (
                             <div className="text-left mt-6">
                                 <p className="text-xs font-semibold text-foreground mb-3">
@@ -375,7 +436,6 @@ export default function PerformancePage() {
                         {/* Per-League */}
                         {perLeague?.leagues?.length > 0 && (
                             <Section title="Per-League Performance" sub="Ranked by Brier score (lower = better). Leagues without evaluated results show prediction counts only.">
-                                {/* Chart — only leagues with accuracy data */}
                                 {perLeague.leagues.filter((l: any) => l.accuracy != null).length > 0 && (
                                     <div className="h-[200px] w-full mb-4">
                                         <ResponsiveContainer width="100%" height="100%">
