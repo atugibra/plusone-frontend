@@ -33,7 +33,7 @@ export const trainPredictionModel = (payload: Record<string, any> = {}) =>
     req('/api/predictions/train', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 export const predictMatchById = (payload: { home_team_id: number; away_team_id: number; league_id: number; season_id: number }) =>
     req('/api/predictions/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-export const predictConsensus = (payload: { home_team_id: number; away_team_id: number; league_id: number; season_id: number }) =>
+export const predictConsensus = (payload: { home_team_id: number; away_team_id: number; league_id: number; season_id: number; match_id?: number }) =>
     req('/api/predictions/consensus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 export const getPredictionFixtures = (params: Record<string, any> = {}) =>
     req(`/api/predictions/fixtures?${new URLSearchParams(params as any)}`);

@@ -281,6 +281,7 @@ export default function PredictionsPage() {
         away_team_id: fixture.away_team_id,
         league_id:    fixture.league_id,
         season_id:    fixture.season_id,
+        match_id:     fixture.id,
       })
       setConsensusResult(data)
     } catch (err: any) {
