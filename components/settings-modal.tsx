@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { useStore } from "@/lib/store";
+
 import {
   Settings, X, Moon, Sun, Monitor, LayoutGrid, LayoutList,
   RefreshCw, TrendingUp, Cpu, Activity, Calculator,
@@ -478,10 +480,19 @@ export function SettingsModal() {
 
             {/* Footer */}
             <div className="border-t border-border bg-background px-6 py-4 flex items-center justify-between z-10">
-              <p className="text-xs text-muted-foreground flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-                Settings saved automatically to local storage
-              </p>
+              <div className="flex flex-col gap-1">
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                  Settings saved automatically to local storage
+                </p>
+                <Link
+                  href="/settings"
+                  onClick={() => setOpen(false)}
+                  className="text-xs text-primary hover:underline"
+                >
+                  ⚙ Admin Settings →
+                </Link>
+              </div>
               <button
                 onClick={() => setOpen(false)}
                 className="rounded-lg bg-primary text-primary-foreground px-8 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors shadow-xl shadow-primary/20"
@@ -489,6 +500,7 @@ export function SettingsModal() {
                 Done
               </button>
             </div>
+
 
           </div>
         </div>,

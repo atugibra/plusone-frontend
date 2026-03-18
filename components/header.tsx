@@ -22,7 +22,6 @@ const navLinks = [
   { href: "/markets", label: "Markets", icon: Percent },
   { href: "/performance", label: "Performance", icon: LineChart },
   { href: "/feedback", label: "Feedback", icon: MessageSquare },
-  { href: "/settings", label: "Settings", icon: Settings },
 ]
 
 
