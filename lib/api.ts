@@ -90,4 +90,20 @@ export const submitFeedback = (body: {
 export const getFeedback = (params: Record<string, any> = {}) =>
     req(`/api/feedback?${new URLSearchParams(params as any)}`);
 
+// ── Admin Settings ───────────────────────────────────────────────────────────
+export const getSettings = () => req('/api/settings');
+export const getSetting  = (key: string) => req(`/api/settings/${key}`);
+export const putSetting  = (key: string, value: string, description?: string) =>
+    req(`/api/settings/${key}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value, description }),
+    });
+
+// ── Auto-consensus job ────────────────────────────────────────────────────────
+export const getAutoConsensusStatus = () => req('/api/predictions/auto-consensus/status');
+export const triggerAutoConsensus   = () =>
+    req('/api/predictions/auto-consensus', { method: 'POST' });
+
+
 
