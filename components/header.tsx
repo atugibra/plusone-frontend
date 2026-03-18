@@ -49,39 +49,63 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav 
-            className="hidden xl:flex flex-1 items-center gap-1 overflow-x-auto mx-4 scrollbar-hide no-scrollbar items-center" 
+            className="hidden xl:flex flex-1 items-center gap-1 mx-4" 
             role="navigation" 
             aria-label="Main navigation"
-            style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}
           >
-            <style jsx>{`
-              nav::-webkit-scrollbar {
-                display: none;
-              }
-            `}</style>
-            <div className="flex gap-1 min-w-max px-2">
-              {navLinks.map((link) => {
+            <div className="flex gap-1">
+              {/* Show first 6 links always */}
+              {navLinks.slice(0, 6).map((link) => {
                 const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href)
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`flex items-center shrink-0 gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${isActive
+                    className={`flex items-center shrink-0 gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${isActive
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                       }`}
                   >
-                    <link.icon className="h-3.5 w-3.5" />
-                    <span className="hidden 2xl:inline">{link.label}</span>
-                    <span className="2xl:hidden">{link.label.split(' ')[0]}</span>
+                    <link.icon className="h-4 w-4" />
+                    <span>{link.label}</span>
                   </Link>
                 )
               })}
+
+              {/* "More" Dropdown for the rest */}
+              <div className="relative group">
+                <button
+                  className="flex items-center shrink-0 gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  aria-haspopup="true"
+                >
+                  <ListOrdered className="h-4 w-4" />
+                  <span>More ▾</span>
+                </button>
+                
+                {/* Dropdown Menu (Hover Triggered) */}
+                <div className="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className="w-56 rounded-md border border-border bg-popover shadow-md py-1">
+                    {navLinks.slice(6).map((link) => {
+                      const isActive = pathname.startsWith(link.href)
+                      return (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className={`flex items-center gap-2.5 px-3 py-2 text-sm font-medium transition-colors ${isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                            }`}
+                        >
+                          <link.icon className="h-4 w-4" />
+                          {link.label}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
           </nav>
-
-
-          {/* Right Section */}
           <div className="flex items-center gap-3">
             <div className="hidden lg:flex items-center gap-1.5 rounded-full border border-border bg-secondary/50 px-2.5 py-1">
               <span className="relative flex h-2 w-2">
