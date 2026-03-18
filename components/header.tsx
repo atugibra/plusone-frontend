@@ -48,25 +48,38 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden xl:flex items-center gap-0.5" role="navigation" aria-label="Main navigation">
-            {navLinks.map((link) => {
-              const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href)
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                    }`}
-                >
-                  <link.icon className="h-3.5 w-3.5" />
-                  <span className="hidden 2xl:inline">{link.label}</span>
-                  <span className="2xl:hidden">{link.label.split(' ')[0]}</span>
-                </Link>
-              )
-            })}
+          <nav 
+            className="hidden xl:flex flex-1 items-center gap-1 overflow-x-auto mx-4 scrollbar-hide no-scrollbar items-center" 
+            role="navigation" 
+            aria-label="Main navigation"
+            style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}
+          >
+            <style jsx>{`
+              nav::-webkit-scrollbar {
+                display: none;
+              }
+            `}</style>
+            <div className="flex gap-1 min-w-max px-2">
+              {navLinks.map((link) => {
+                const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href)
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`flex items-center shrink-0 gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                      }`}
+                  >
+                    <link.icon className="h-3.5 w-3.5" />
+                    <span className="hidden 2xl:inline">{link.label}</span>
+                    <span className="2xl:hidden">{link.label.split(' ')[0]}</span>
+                  </Link>
+                )
+              })}
+            </div>
           </nav>
+
 
           {/* Right Section */}
           <div className="flex items-center gap-3">
