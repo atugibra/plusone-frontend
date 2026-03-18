@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, BarChart3, TrendingUp, Users, Trophy, Calendar, Menu, X, ListOrdered, Shield, Zap, RefreshCw, LineChart, Percent, Sparkles, MessageSquare } from "lucide-react"
+import { Activity, BarChart3, TrendingUp, Users, Trophy, Calendar, Menu, X, ListOrdered, Shield, Zap, RefreshCw, LineChart, Percent, Sparkles, MessageSquare, Settings } from "lucide-react"
 import { useState } from "react"
 import { SettingsModal } from "@/components/settings-modal"
+
 
 const navLinks = [
   { href: "/", label: "Overview", icon: BarChart3 },
@@ -21,7 +22,9 @@ const navLinks = [
   { href: "/markets", label: "Markets", icon: Percent },
   { href: "/performance", label: "Performance", icon: LineChart },
   { href: "/feedback", label: "Feedback", icon: MessageSquare },
+  { href: "/settings", label: "Settings", icon: Settings },
 ]
+
 
 
 export function Header() {
