@@ -3,8 +3,18 @@ if (API.startsWith('http://') && !API.includes('localhost') && !API.includes('12
     API = API.replace('http://', 'https://');
 }
 
+// Admin API key — set NEXT_PUBLIC_ADMIN_API_KEY in Vercel environment variables.
+// Used to authenticate POST/PUT/PATCH/DELETE requests against the backend middleware.
+const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY || '';
+
 const req = async (path: string, opts: RequestInit = {}) => {
-    const res = await fetch(`${API}${path}`, opts);
+    const method = (opts.method ?? 'GET').toUpperCase();
+    const headers = new Headers(opts.headers as HeadersInit | undefined);
+    // Inject admin key for all mutating requests
+    if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS' && ADMIN_KEY) {
+        headers.set('X-API-Key', ADMIN_KEY);
+    }
+    const res = await fetch(`${API}${path}`, { ...opts, headers });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
 };

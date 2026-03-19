@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useEffect, useState } from "react"
-import { getLeagues, getHealth, getMatches, getPlayers, getStandings } from "@/lib/api"
+import { getLeagues, getHealth, getMatches, getPlayers, getStandings, getPredictionLogAccuracy, getPredictionAccuracy } from "@/lib/api"
 import { useStore } from "@/lib/store"
 import {
   Trophy,
@@ -34,6 +34,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [matchCount, setMatchCount] = useState(0)
   const [playerCount, setPlayerCount] = useState(0)
+  const [accuracyData, setAccuracyData] = useState<any>(null)
+  const [weeklyTrends, setWeeklyTrends] = useState<{ week: string; accuracy: number }[]>([])
 
   const { compactMode, animationsEnabled } = useStore()
 
@@ -69,7 +71,13 @@ export default function DashboardPage() {
         const arr = Array.isArray(res) ? res : []
         setStandings(arr)
       }).catch(() => { }),
-      getHealth().then(setHealth).catch(() => setHealth({ status: 'unhealthy' }))
+      getHealth().then(setHealth).catch(() => setHealth({ status: 'unhealthy' })),
+      // Real prediction accuracy from graded prediction_log entries
+      getPredictionLogAccuracy().then((res: any) => setAccuracyData(res)).catch(() => {}),
+      // Weekly accuracy trend from match results
+      getPredictionAccuracy({ weeks: 6 }).then((res: any) => {
+        if (Array.isArray(res) && res.length > 0) setWeeklyTrends(res)
+      }).catch(() => {}),
     ]).finally(() => setLoading(false))
   }, [])
 
@@ -90,14 +98,15 @@ export default function DashboardPage() {
   const topScorers = [...players].sort((a, b) => (b.goals || 0) - (a.goals || 0)).slice(0, 5)
   const topStandings = standings.slice(0, 6)
 
-  // Mock prediction accuracy for now as API might not expose trend directly yet
-  const accuracy = 78
-  const correctPreds = 45
-  const totalPreds = 58
-  const weeklyTrends = [
-    { week: "W1", accuracy: 72 }, { week: "W2", accuracy: 68 }, { week: "W3", accuracy: 75 },
-    { week: "W4", accuracy: 81 }, { week: "W5", accuracy: 79 }, { week: "W6", accuracy: 83 }
-  ]
+  // Derive accuracy stats from real API data (falls back gracefully while loading)
+  const accuracy     = accuracyData?.accuracy_pct   ?? null
+  const correctPreds = accuracyData?.correct_count   ?? 0
+  const totalPreds   = accuracyData?.total           ?? 0
+
+  // Fallback chart data if the API returns nothing yet
+  const chartData = weeklyTrends.length > 0
+    ? weeklyTrends
+    : [{ week: "–", accuracy: 0 }]
 
   return (
     <div className="min-h-screen bg-background">
@@ -156,8 +165,8 @@ export default function DashboardPage() {
           <KpiCard
             icon={Target}
             label="Prediction Accuracy"
-            value={`${loading ? "-" : accuracy}%`}
-            sub={`${correctPreds}/${totalPreds} correct`}
+            value={accuracy !== null ? `${accuracy}%` : (loading ? "-" : "N/A")}
+            sub={totalPreds > 0 ? `${correctPreds}/${totalPreds} correct` : "No graded predictions yet"}
             href="/predictions"
           />
         </div>
