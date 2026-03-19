@@ -20,7 +20,7 @@ const req = async (path: string, opts: RequestInit = {}) => {
     // Secure Proxy Routing for Mutations
     if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
         const cleanPath = path.replace(/^\/api\//, '');
-        url = `/api/proxy/${cleanPath}`;
+        url = `/api/proxy?target=${encodeURIComponent(cleanPath)}`;
     } else {
         // Cache read for GET requests
         const cached = queryCache.get(url);
@@ -137,5 +137,5 @@ export const getAutoConsensusStatus = () => req('/api/predictions/auto-consensus
 export const triggerAutoConsensus   = () =>
     req('/api/predictions/auto-consensus', { method: 'POST' });
 
-
-
+export const getMarketAccuracy = () => req('/api/performance/markets');
+export const recalibrateModel = () => req('/api/predictions/recalibrate', { method: 'POST' });
