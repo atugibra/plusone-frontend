@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useEffect, useState } from "react"
-import { getLeagues, getHealth, getMatches, getPlayers, getStandings } from "@/lib/api"
+import { getLeagues, getHealth, getMatches, getPlayers, getStandings, getPredictionAccuracy } from "@/lib/api"
 import { useStore } from "@/lib/store"
 import {
   Trophy,
@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [matchCount, setMatchCount] = useState(0)
   const [playerCount, setPlayerCount] = useState(0)
+  const [accuracyData, setAccuracyData] = useState<any>(null)
 
   const { compactMode, animationsEnabled } = useStore()
 
@@ -69,7 +70,8 @@ export default function DashboardPage() {
         const arr = Array.isArray(res) ? res : []
         setStandings(arr)
       }).catch(() => { }),
-      getHealth().then(setHealth).catch(() => setHealth({ status: 'unhealthy' }))
+      getHealth().then(setHealth).catch(() => setHealth({ status: 'unhealthy' })),
+      getPredictionAccuracy().then(res => setAccuracyData(res)).catch(() => {}),
     ]).finally(() => setLoading(false))
   }, [])
 
@@ -90,14 +92,26 @@ export default function DashboardPage() {
   const topScorers = [...players].sort((a, b) => (b.goals || 0) - (a.goals || 0)).slice(0, 5)
   const topStandings = standings.slice(0, 6)
 
-  // Mock prediction accuracy for now as API might not expose trend directly yet
-  const accuracy = 78
-  const correctPreds = 45
-  const totalPreds = 58
-  const weeklyTrends = [
-    { week: "W1", accuracy: 72 }, { week: "W2", accuracy: 68 }, { week: "W3", accuracy: 75 },
-    { week: "W4", accuracy: 81 }, { week: "W5", accuracy: 79 }, { week: "W6", accuracy: 83 }
-  ]
+  // Real prediction accuracy — derived from API, falls back to null while loading
+  const accuracy     = accuracyData?.overall_accuracy != null
+    ? Math.round(accuracyData.overall_accuracy * 100)
+    : accuracyData?.accuracy_pct ?? null
+  const correctPreds = accuracyData?.correct   ?? accuracyData?.correct_count   ?? null
+  const totalPreds   = accuracyData?.total     ?? accuracyData?.total_evaluated  ?? null
+
+  // Weekly trend from API (gameweek array) or empty while loading
+  const weeklyTrends: { week: string; accuracy: number }[] = (
+    Array.isArray(accuracyData?.by_gameweek)
+      ? accuracyData.by_gameweek.slice(-8).map((gw: any) => ({
+          week: gw.gameweek ? `GW${gw.gameweek}` : (gw.week ?? ""),
+          accuracy: gw.accuracy_pct != null
+            ? Math.round(gw.accuracy_pct)
+            : gw.accuracy != null
+            ? Math.round(gw.accuracy * 100)
+            : 0,
+        }))
+      : []
+  )
 
   return (
     <div className="min-h-screen bg-background">
@@ -156,8 +170,14 @@ export default function DashboardPage() {
           <KpiCard
             icon={Target}
             label="Prediction Accuracy"
-            value={`${loading ? "-" : accuracy}%`}
-            sub={`${correctPreds}/${totalPreds} correct`}
+            value={loading || accuracy == null ? "-" : `${accuracy}%`}
+            sub={
+              correctPreds != null && totalPreds != null
+                ? `${correctPreds}/${totalPreds} correct`
+                : accuracy == null
+                ? "No graded predictions yet"
+                : "Graded predictions"
+            }
             href="/predictions"
           />
         </div>
@@ -366,43 +386,50 @@ export default function DashboardPage() {
               </Link>
             </div>
             <div className="h-[180px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyTrends} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.01 260)" vertical={false} />
-                  <XAxis
-                    dataKey="week"
-                    tick={{ fontSize: 9, fill: "oklch(0.55 0.01 260)" }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    domain={[50, 100]}
-                    tick={{ fontSize: 9, fill: "oklch(0.55 0.01 260)" }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v: number) => `${v}%`}
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null
-                      const d = payload[0].payload
-                      return (
-                        <div className="rounded-lg border border-border bg-card p-2 shadow-xl">
-                          <p className="text-xs font-semibold text-foreground">{d.week}: {d.accuracy}%</p>
-                        </div>
-                      )
-                    }}
-                  />
-                  <Bar dataKey="accuracy" radius={[3, 3, 0, 0]}>
-                    {weeklyTrends.map((entry, i) => (
-                      <Cell
-                        key={i}
-                        fill={entry.accuracy >= 80 ? "oklch(0.65 0.19 145)" : entry.accuracy >= 70 ? "oklch(0.7 0.18 55)" : "oklch(0.55 0.2 27)"}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              {weeklyTrends.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center gap-1 text-muted-foreground">
+                  <BarChart3 className="h-6 w-6 opacity-30" />
+                  <p className="text-xs">{loading ? "Loading trend…" : "No graded predictions yet"}</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={weeklyTrends} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.01 260)" vertical={false} />
+                    <XAxis
+                      dataKey="week"
+                      tick={{ fontSize: 9, fill: "oklch(0.55 0.01 260)" }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      domain={[50, 100]}
+                      tick={{ fontSize: 9, fill: "oklch(0.55 0.01 260)" }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v: number) => `${v}%`}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null
+                        const d = payload[0].payload
+                        return (
+                          <div className="rounded-lg border border-border bg-card p-2 shadow-xl">
+                            <p className="text-xs font-semibold text-foreground">{d.week}: {d.accuracy}%</p>
+                          </div>
+                        )
+                      }}
+                    />
+                    <Bar dataKey="accuracy" radius={[3, 3, 0, 0]}>
+                      {weeklyTrends.map((entry, i) => (
+                        <Cell
+                          key={i}
+                          fill={entry.accuracy >= 80 ? "oklch(0.65 0.19 145)" : entry.accuracy >= 70 ? "oklch(0.7 0.18 55)" : "oklch(0.55 0.2 27)"}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
