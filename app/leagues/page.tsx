@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer"
 import { getLeagues, getStandings } from "@/lib/api"
 import { League, Standing } from "@/lib/types"
 import { Trophy, ChevronRight, ArrowUpDown, Globe } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const countryFlags: Record<string, string> = {
   England: "ENG",
@@ -79,7 +80,15 @@ export default function LeaguesPage() {
 
         {/* League Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-          {loadingLeagues && <p className="text-sm text-muted-foreground p-4">Loading leagues...</p>}
+          {loadingLeagues && Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-lg border border-border bg-card p-4 flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+              <div className="flex-1 flex flex-col gap-2">
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-2.5 w-20" />
+              </div>
+            </div>
+          ))}
           {leagues.map((league) => (
             <button
               key={league.id}
@@ -139,9 +148,20 @@ export default function LeaguesPage() {
                 </thead>
                 <tbody>
                   {loadingStandings ? (
-                    <tr>
-                      <td colSpan={10} className="px-4 py-8 text-center text-sm text-muted-foreground">Loading standings...</td>
-                    </tr>
+                    Array.from({ length: 10 }).map((_, i) => (
+                      <tr key={i} className="border-b border-border/50">
+                        <td className="px-2 py-2.5"><Skeleton className="h-3 w-4 mx-auto" /></td>
+                        <td className="px-3 py-2.5"><Skeleton className="h-3 w-28" /></td>
+                        <td className="px-2 py-2.5 hidden sm:table-cell"><Skeleton className="h-3 w-6 mx-auto" /></td>
+                        <td className="px-2 py-2.5 hidden sm:table-cell"><Skeleton className="h-3 w-6 mx-auto" /></td>
+                        <td className="px-2 py-2.5 hidden sm:table-cell"><Skeleton className="h-3 w-6 mx-auto" /></td>
+                        <td className="px-2 py-2.5 hidden sm:table-cell"><Skeleton className="h-3 w-6 mx-auto" /></td>
+                        <td className="px-2 py-2.5 hidden md:table-cell"><Skeleton className="h-3 w-6 mx-auto" /></td>
+                        <td className="px-2 py-2.5 hidden md:table-cell"><Skeleton className="h-3 w-6 mx-auto" /></td>
+                        <td className="px-2 py-2.5 hidden sm:table-cell"><Skeleton className="h-3 w-8 mx-auto" /></td>
+                        <td className="px-2 py-2.5"><Skeleton className="h-3 w-8 mx-auto" /></td>
+                      </tr>
+                    ))
                   ) : sorted.map((row, idx) => (
                     <StandingRowComponent key={row.team_id || row.team} row={row} idx={idx} />
                   ))}

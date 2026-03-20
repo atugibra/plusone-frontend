@@ -8,6 +8,7 @@ import { useStore } from "@/lib/store"
 import { Match, League } from "@/lib/types"
 import { Calendar, Filter, Search, CheckCircle2, Clock, X } from "lucide-react"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
+import { Skeleton } from "@/components/ui/skeleton"
 import Image from "next/image"
 
 type TabType = "all" | "results" | "fixtures"
@@ -151,8 +152,29 @@ export default function MatchesPage() {
         {/* Match List */}
         <div className={`flex flex-col ${gapClass} ${entryAnim} delay-200`}>
           {loading ? (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card p-12 text-center">
-              <p className="text-sm text-muted-foreground">Loading matches...</p>
+            <div className="flex flex-col gap-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="rounded-lg border border-border bg-card p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col gap-1.5 w-24">
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-center gap-6">
+                      <div className="flex-1 flex items-center justify-end gap-3">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                      </div>
+                      <Skeleton className="h-8 w-16 rounded-md" />
+                      <div className="flex-1 flex items-center justify-start gap-3">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-5 w-12 rounded-full" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card p-12 text-center">
