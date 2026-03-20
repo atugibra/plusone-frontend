@@ -3,42 +3,10 @@ if (API.startsWith('http://') && !API.includes('localhost') && !API.includes('12
     API = API.replace('http://', 'https://');
 }
 
-// Mutating requests are proxied through our secure Next.js API route (/api/proxy/...)
-// to avoid exposing ADMIN_API_KEY to the client-side browser bundle.
-
-// Simple highly-effective in-memory cache for client-side GET requests
-// Prevents thundering herds from React strict mode and rapid navigation.
-const queryCache = new Map<string, { data: any, expiry: number }>();
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds
-
 const req = async (path: string, opts: RequestInit = {}) => {
-    const method = (opts.method ?? 'GET').toUpperCase();
-    const headers = new Headers(opts.headers as HeadersInit | undefined);
-    
-    let url = `${API}${path}`;
-    
-    // Secure Proxy Routing for Mutations
-    if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
-        const cleanPath = path.replace(/^\/api\//, '');
-        url = `/api/proxy?target=${encodeURIComponent(cleanPath)}`;
-    } else {
-        // Cache read for GET requests
-        const cached = queryCache.get(url);
-        if (cached && Date.now() < cached.expiry) {
-            return cached.data;
-        }
-    }
-
-    const res = await fetch(url, { ...opts, headers });
+    const res = await fetch(`${API}${path}`, opts);
     if (!res.ok) throw new Error(await res.text());
-    
-    const data = await res.json();
-    
-    // Cache write for GET requests
-    if (method === 'GET') {
-        queryCache.set(url, { data, expiry: Date.now() + CACHE_TTL_MS });
-    }
-    return data;
+    return res.json();
 };
 
 export const getLeagues = () => req('/api/leagues');
@@ -137,5 +105,5 @@ export const getAutoConsensusStatus = () => req('/api/predictions/auto-consensus
 export const triggerAutoConsensus   = () =>
     req('/api/predictions/auto-consensus', { method: 'POST' });
 
-export const getMarketAccuracy = () => req('/api/performance/markets');
-export const recalibrateModel = () => req('/api/predictions/recalibrate', { method: 'POST' });
+
+

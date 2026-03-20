@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { getPerformance, getPerformanceDrift, getCalibration, getPerLeague, getConfusionMatrix, evaluatePredictions, getMarketAccuracy, recalibrateModel } from "@/lib/api"
+import { getPerformance, getPerformanceDrift, getCalibration, getPerLeague, getConfusionMatrix, evaluatePredictions } from "@/lib/api"
 import { BarChart3, TrendingUp, Target, CheckCircle2, AlertCircle, RefreshCw, Zap } from "lucide-react"
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -11,6 +11,17 @@ import {
 } from "recharts"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function getMarketAccuracy() {
+    try {
+        const base = process.env.NEXT_PUBLIC_API_URL || ""
+        const res = await fetch(`${base}/api/performance/markets`)
+        if (!res.ok) return null
+        return res.json()
+    } catch {
+        return null
+    }
+}
 
 function StatCard({ icon: Icon, label, value, sub, good }: {
     icon: React.ElementType; label: string; value: string; sub: string; good?: boolean
@@ -178,7 +189,10 @@ export default function PerformancePage() {
         setCalibrating(true)
         setCalMsg("")
         try {
-            const data = await recalibrateModel()
+            const base = process.env.NEXT_PUBLIC_API_URL || ""
+            const res  = await fetch(`${base}/api/predictions/recalibrate`, { method: "POST" })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.detail || "Recalibration failed")
             setCalMsg(
                 `✅ Calibrated on ${data.n_samples} predictions — ` +
                 `accuracy ${data.pre_accuracy_pct}% → ${data.post_accuracy_pct}% ` +
@@ -198,7 +212,7 @@ export default function PerformancePage() {
             getCalibration(),
             getPerLeague(),
             getConfusionMatrix(),
-            getMarketAccuracy().catch(() => null),
+            getMarketAccuracy(),
         ])
             .then(([p, d, c, l, cm, mk]) => {
                 setPerf(p); setDrift(d); setCal(c)
