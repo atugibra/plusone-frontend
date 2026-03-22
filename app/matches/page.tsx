@@ -190,7 +190,7 @@ export default function MatchesPage() {
                 >
                   <div className="flex items-center justify-between gap-4">
                     {/* Left: Date & League */}
-                    <div className="flex flex-col gap-1 shrink-0 w-24 sm:w-32">
+                    <div className="flex flex-col gap-1 shrink-0 max-w-[72px] sm:max-w-[110px]">
                       <span className="text-[10px] font-medium text-primary">{match.league}</span>
                       <span className="text-[11px] text-muted-foreground">{formatDate(match.match_date)}</span>
                       {match.gameweek && (
@@ -199,9 +199,9 @@ export default function MatchesPage() {
                     </div>
 
                     {/* Center: Teams & Score */}
-                    <div className="flex-1 flex items-center justify-center gap-3 sm:gap-6 min-w-0">
-                      <div className="flex-1 flex items-center justify-end gap-3">
-                        <span className={`text-sm font-semibold truncate block ${match.home_score !== null && (match.home_score ?? 0) > (match.away_score ?? 0)
+                    <div className="flex-1 flex items-center justify-center gap-2 sm:gap-6 min-w-0">
+                      <div className="flex-1 flex items-center justify-end gap-1.5 sm:gap-3 min-w-0">
+                        <span className={`text-sm font-semibold truncate min-w-0 block ${match.home_score !== null && (match.home_score ?? 0) > (match.away_score ?? 0)
                           ? "text-foreground"
                           : "text-foreground/70"
                           }`}>
@@ -232,7 +232,7 @@ export default function MatchesPage() {
                         )}
                       </div>
 
-                      <div className="flex-1 flex items-center justify-start gap-3">
+                      <div className="flex-1 flex items-center justify-start gap-1.5 sm:gap-3 min-w-0">
                         <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
                           <Image
                              src={match.away_logo || "/placeholder-logo.png"}
@@ -242,7 +242,7 @@ export default function MatchesPage() {
                              className="object-contain p-1"
                           />
                         </div>
-                        <span className={`text-sm font-semibold truncate block ${match.home_score !== null && (match.away_score ?? 0) > (match.home_score ?? 0)
+                        <span className={`text-sm font-semibold truncate min-w-0 block ${match.home_score !== null && (match.away_score ?? 0) > (match.home_score ?? 0)
                           ? "text-foreground"
                           : "text-foreground/70"
                           }`}>
@@ -251,8 +251,8 @@ export default function MatchesPage() {
                       </div>
                     </div>
 
-                    {/* Right: Status */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    {/* Right: Status — hidden on xs to save space */}
+                    <div className="hidden sm:flex items-center gap-2 shrink-0">
                       {match.home_score !== null ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5">
                           <CheckCircle2 className="h-3 w-3 text-primary" />
