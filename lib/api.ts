@@ -28,8 +28,8 @@ export const getLeagues = () => req('/api/leagues');
 export const getLeague = (id: string | number) => req(`/api/leagues/${id}`);
 export const getMatches = (params: Record<string, any> = {}) => req(`/api/matches?${new URLSearchParams(params as any)}`);
 export const getMatch = (id: string | number) => req(`/api/matches/${id}`);
-export const updateMatch = (id: string | number, data: any) => req(`/api/matches/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-export const deleteMatch = (id: string | number) => req(`/api/matches/${id}`, { method: 'DELETE' });
+export const updateMatch = (id: string | number, data: any) => authReq(`/api/matches/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+export const deleteMatch = (id: string | number) => authReq(`/api/matches/${id}`, { method: 'DELETE' });
 export const getTeams = (params: Record<string, any> = {}) => req(`/api/teams?${new URLSearchParams(params as any)}`);
 export const getTeam = (id: string | number) => req(`/api/teams/${id}`);
 export const getH2H = (teamId: string | number, oppId: string | number) => req(`/api/teams/${teamId}/head-to-head/${oppId}`);
@@ -40,12 +40,12 @@ export const getPlayers = (params: Record<string, any> = {}) => req(`/api/player
 export const getTopScorers = (params: Record<string, any> = {}) => req(`/api/players/top-scorers?${new URLSearchParams(params as any)}`);
 export const getHealth = () => req('/api/health');
 export const getVenueStats = (params: Record<string, any> = {}) => req(`/api/venue-stats?${new URLSearchParams(params as any)}`);
-export const syncAll = (payload: any) => req('/api/sync/all', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+export const syncAll = (payload: any) => authReq('/api/sync/all', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
 // ── ML Prediction Engine ────────────────────────────────────────────────────
 export const getPredictionStatus = () => req('/api/predictions/status');
 export const trainPredictionModel = (payload: Record<string, any> = {}) =>
-    req('/api/predictions/train', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    authReq('/api/predictions/train', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 export const predictMatchById = (payload: { home_team_id: number; away_team_id: number; league_id: number; season_id: number }) =>
     req('/api/predictions/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 export const predictConsensus = (payload: { home_team_id: number; away_team_id: number; league_id: number; season_id: number; match_id?: number }) =>
@@ -72,7 +72,7 @@ export const getPredictionAccuracy = (params: Record<string, any> = {}) =>
 
 // ── DC Markets Engine ────────────────────────────────────────────────────────
 export const getDCStatus = () => req('/api/markets/dc/status');
-export const trainDCModel = () => req('/api/markets/dc/train', { method: 'POST' });
+export const trainDCModel = () => authReq('/api/markets/dc/train', { method: 'POST' });
 export const getDCPredict = (homeId: number, awayId: number) =>
     req(`/api/markets/dc/predict?home_team_id=${homeId}&away_team_id=${awayId}`);
 export const getMarkets = (homeId: number, awayId: number) =>
@@ -113,7 +113,7 @@ export const getFeedback = (params: Record<string, any> = {}) =>
 export const getSettings = () => req('/api/settings');
 export const getSetting  = (key: string) => req(`/api/settings/${key}`);
 export const putSetting  = (key: string, value: string, description?: string) =>
-    req(`/api/settings/${key}`, {
+    authReq(`/api/settings/${key}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value, description }),
@@ -122,7 +122,7 @@ export const putSetting  = (key: string, value: string, description?: string) =>
 // ── Auto-consensus job ────────────────────────────────────────────────────────
 export const getAutoConsensusStatus = () => req('/api/predictions/auto-consensus/status');
 export const triggerAutoConsensus   = () =>
-    req('/api/predictions/auto-consensus', { method: 'POST' });
+    authReq('/api/predictions/auto-consensus', { method: 'POST' });
 
 
 
