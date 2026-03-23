@@ -9,6 +9,21 @@ const req = async (path: string, opts: RequestInit = {}) => {
     return res.json();
 };
 
+// Authenticated request — reads JWT from localStorage and adds Bearer header
+const authReq = async (path: string, opts: RequestInit = {}) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('plusone_token') : null;
+    const headers: Record<string, string> = {
+        ...(opts.headers as Record<string, string> || {}),
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API}${path}`, { ...opts, headers });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text);
+    }
+    return res.json();
+};
+
 export const getLeagues = () => req('/api/leagues');
 export const getLeague = (id: string | number) => req(`/api/leagues/${id}`);
 export const getMatches = (params: Record<string, any> = {}) => req(`/api/matches?${new URLSearchParams(params as any)}`);
@@ -78,9 +93,13 @@ export const getPerformanceDrift = () => req('/api/performance/drift');
 export const getCalibration = () => req('/api/performance/calibration');
 export const getPerLeague = () => req('/api/performance/per-league');
 export const getConfusionMatrix = () => req('/api/performance/confusion');
-// Grade all completed predictions against actual match results
+// Grade all completed predictions against actual match results (requires admin auth)
 export const evaluatePredictions = () =>
-    req('/api/prediction-log/evaluate', { method: 'POST' });
+    authReq('/api/prediction-log/evaluate', { method: 'POST' });
+
+// Recalibrate the ML model (requires admin auth)
+export const recalibrate = () =>
+    authReq('/api/predictions/recalibrate', { method: 'POST' });
 
 // ── User Feedback ─────────────────────────────────────────────────────────────
 export const submitFeedback = (body: {

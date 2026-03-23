@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { getPerformance, getPerformanceDrift, getCalibration, getPerLeague, getConfusionMatrix, evaluatePredictions } from "@/lib/api"
+import { getPerformance, getPerformanceDrift, getCalibration, getPerLeague, getConfusionMatrix, evaluatePredictions, recalibrate } from "@/lib/api"
 import { BarChart3, TrendingUp, Target, CheckCircle2, AlertCircle, RefreshCw, Zap } from "lucide-react"
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -189,10 +189,7 @@ export default function PerformancePage() {
         setCalibrating(true)
         setCalMsg("")
         try {
-            const base = process.env.NEXT_PUBLIC_API_URL || ""
-            const res  = await fetch(`${base}/api/predictions/recalibrate`, { method: "POST" })
-            const data = await res.json()
-            if (!res.ok) throw new Error(data.detail || "Recalibration failed")
+            const data = await recalibrate()
             setCalMsg(
                 `✅ Calibrated on ${data.n_samples} predictions — ` +
                 `accuracy ${data.pre_accuracy_pct}% → ${data.post_accuracy_pct}% ` +
