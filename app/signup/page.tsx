@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useAuth, type Plan } from "@/lib/auth"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -17,7 +17,7 @@ const PAYMENT_METHODS = [
   "Bank Transfer (other)",
 ]
 
-export default function SignupPage() {
+function SignupContent() {
   const { register, submitPayment } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -261,5 +261,17 @@ export default function SignupPage() {
       </main>
       <Footer />
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <SignupContent />
+    </Suspense>
   )
 }
