@@ -5,7 +5,11 @@ import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-import { Users, ShieldCheck, RefreshCw, Activity, BarChart2, Trash2, UserPlus, X, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import {
+  Users, ShieldCheck, RefreshCw, Activity, BarChart2,
+  Trash2, UserPlus, X, AlertCircle, CheckCircle2, Loader2,
+  MessageSquare, Send, CreditCard,
+} from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://football-analytics-production-5b3d.up.railway.app";
 
@@ -13,8 +17,26 @@ interface User {
   id: number;
   email: string;
   role: "user" | "admin";
+  plan: string;
   phone?: string | null;
+  is_active: boolean;
+  trial_expires_at?: string | null;
+  subscription_expires_at?: string | null;
+  payment_ref?: string | null;
+  payment_method?: string | null;
+  payment_amount?: string | null;
   created_at?: string;
+}
+
+interface Feedback {
+  id: number;
+  user_email?: string;
+  category?: string;
+  feedback_text?: string;
+  message?: string;
+  created_at?: string;
+  reply_text?: string | null;
+  replied_at?: string | null;
 }
 
 function authHeaders(token: string | null) {
@@ -27,12 +49,21 @@ export default function AdminPage() {
   const { user, token, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  // Tabs
-  const [tab, setTab] = useState<"users" | "actions">("users");
-
-  // Users list
+  const [tab, setTab] = useState<"users" | "messages" | "actions">("users");
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+
+  // Activation state per user
+  const [activatingId, setActivatingId] = useState<number | null>(null);
+  const [activatePlan, setActivatePlan] = useState("basic");
+  const [activateMonths, setActivateMonths] = useState(1);
+
+  // Reply state
+  const [replyingId, setReplyingId] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [replyLoading, setReplyLoading] = useState(false);
 
   // New user form
   const [showNewUser, setShowNewUser] = useState(false);
@@ -42,15 +73,11 @@ export default function AdminPage() {
   const [newRole, setNewRole] = useState<"user" | "admin">("user");
   const [createStatus, setCreateStatus] = useState<ActionStatus>({ loading: false });
 
-  // Admin action statuses
   const [trainStatus, setTrainStatus] = useState<ActionStatus>({ loading: false });
   const [evalStatus, setEvalStatus] = useState<ActionStatus>({ loading: false });
   const [recalStatus, setRecalStatus] = useState<ActionStatus>({ loading: false });
 
-  // Redirect non-admins
-  useEffect(() => {
-    if (!authLoading && (!user || !isAdmin)) router.replace("/");
-  }, [authLoading, user, isAdmin, router]);
+  useEffect(() => { if (!authLoading && (!user || !isAdmin)) router.replace("/"); }, [authLoading, user, isAdmin, router]);
 
   const fetchUsers = useCallback(async () => {
     if (!token) return;
@@ -62,7 +89,19 @@ export default function AdminPage() {
     } catch { /* ignore */ } finally { setUsersLoading(false); }
   }, [token]);
 
-  useEffect(() => { if (isAdmin) fetchUsers(); }, [isAdmin, fetchUsers]);
+  const fetchFeedback = useCallback(async () => {
+    if (!token) return;
+    setFeedbackLoading(true);
+    try {
+      const res = await fetch(`${API}/api/feedback`, { headers: authHeaders(token) });
+      const data = await res.json();
+      setFeedback(Array.isArray(data) ? data : (data.feedback ?? []));
+    } catch { /* ignore */ } finally { setFeedbackLoading(false); }
+  }, [token]);
+
+  useEffect(() => {
+    if (isAdmin) { fetchUsers(); fetchFeedback(); }
+  }, [isAdmin, fetchUsers, fetchFeedback]);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,6 +136,29 @@ export default function AdminPage() {
       body: JSON.stringify({ role: newRole }),
     });
     fetchUsers();
+  };
+
+  const handleActivate = async (userId: number) => {
+    const res = await fetch(`${API}/api/auth/users/${userId}/activate`, {
+      method: "PUT",
+      headers: authHeaders(token),
+      body: JSON.stringify({ plan: activatePlan, months: activateMonths }),
+    });
+    if (res.ok) { setActivatingId(null); fetchUsers(); }
+  };
+
+  const handleReply = async (fbId: number) => {
+    if (!replyText.trim()) return;
+    setReplyLoading(true);
+    try {
+      await fetch(`${API}/api/feedback/${fbId}/reply`, {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({ reply_text: replyText }),
+      });
+      setReplyText(""); setReplyingId(null);
+      fetchFeedback();
+    } finally { setReplyLoading(false); }
   };
 
   const runAction = async (
@@ -136,13 +198,13 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 mb-6 rounded-lg border border-border bg-card p-1 w-fit">
-          {(["users", "actions"] as const).map((t) => (
+          {(["users", "messages", "actions"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors capitalize ${tab === t ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
             >
-              {t === "users" ? "👥 Users" : "⚡ Actions"}
+              {t === "users" ? "👥 Users" : t === "messages" ? "💬 Messages" : "⚡ Actions"}
             </button>
           ))}
         </div>
@@ -214,59 +276,184 @@ export default function AdminPage() {
                   <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading users…
                 </div>
               ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary/30">
-                      <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Email</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden sm:table-cell">Phone</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Role</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Joined</th>
-                      <th className="px-4 py-2.5"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((u) => (
-                      <tr key={u.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
-                        <td className="px-4 py-3 font-medium text-foreground truncate max-w-[160px]">{u.email}</td>
-                        <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">{u.phone || "—"}</td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => u.id !== user?.id && handleRoleToggle(u)}
-                            disabled={u.id === user?.id}
-                            title={u.id === user?.id ? "Can't change your own role" : "Click to toggle role"}
-                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                              u.role === "admin"
-                                ? "bg-primary/15 text-primary hover:bg-primary/25"
-                                : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                            } disabled:opacity-60 disabled:cursor-not-allowed`}
-                          >
-                            {u.role === "admin" ? <ShieldCheck className="h-3 w-3" /> : <Users className="h-3 w-3" />}
-                            {u.role}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs hidden md:table-cell">
-                          {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleDeleteUser(u.id)}
-                            disabled={u.id === user?.id}
-                            title={u.id === user?.id ? "Can't delete yourself" : "Delete user"}
-                            className="flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[700px]">
+                    <thead>
+                      <tr className="border-b border-border bg-secondary/30">
+                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Email</th>
+                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Plan</th>
+                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Payment Ref</th>
+                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Expires</th>
+                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {users.map((u) => (
+                        <>
+                          <tr key={u.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
+                            <td className="px-4 py-3">
+                              <p className="font-medium text-foreground truncate max-w-[160px]">{u.email}</p>
+                              <p className="text-[10px] text-muted-foreground">{u.phone || ""}</p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                u.plan === "elite" ? "bg-amber-500/15 text-amber-600" :
+                                u.plan === "pro" ? "bg-blue-500/15 text-blue-600" :
+                                u.plan === "basic" ? "bg-emerald-500/15 text-emerald-600" :
+                                u.plan === "admin" ? "bg-primary/15 text-primary" :
+                                "bg-secondary text-muted-foreground"
+                              }`}>
+                                {u.is_active ? "✓" : u.plan === "trial" ? "⏱" : "✗"} {u.plan}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {u.payment_ref ? (
+                                <div className="text-xs">
+                                  <p className="font-mono text-foreground">{u.payment_ref}</p>
+                                  <p className="text-muted-foreground">{u.payment_method} · {u.payment_amount}</p>
+                                </div>
+                              ) : <span className="text-xs text-muted-foreground">—</span>}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground">
+                              {u.subscription_expires_at
+                                ? new Date(u.subscription_expires_at).toLocaleDateString()
+                                : u.trial_expires_at
+                                ? `Trial to ${new Date(u.trial_expires_at).toLocaleDateString()}`
+                                : "—"}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => setActivatingId(activatingId === u.id ? null : u.id)}
+                                  title="Activate subscription"
+                                  className="flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                                >
+                                  <CreditCard className="h-3 w-3" /> Activate
+                                </button>
+                                <button
+                                  onClick={() => u.id !== user?.id && handleRoleToggle(u)}
+                                  disabled={u.id === user?.id}
+                                  title={u.role}
+                                  className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                                    u.role === "admin" ? "bg-primary/15 text-primary hover:bg-primary/25" : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                                  } disabled:opacity-40 disabled:cursor-not-allowed`}
+                                >
+                                  {u.role === "admin" ? <ShieldCheck className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+                                  {u.role}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(u.id)}
+                                  disabled={u.id === user?.id}
+                                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          {/* Inline activation panel */}
+                          {activatingId === u.id && (
+                            <tr className="bg-primary/5 border-b border-border/50">
+                              <td colSpan={5} className="px-4 py-3">
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <span className="text-xs font-medium text-foreground">Activate plan for {u.email.split("@")[0]}:</span>
+                                  <select value={activatePlan} onChange={e => setActivatePlan(e.target.value)}
+                                    className="rounded-md border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                    <option value="basic">Basic</option>
+                                    <option value="pro">Pro</option>
+                                    <option value="elite">Elite</option>
+                                    <option value="admin">Admin</option>
+                                  </select>
+                                  <select value={activateMonths} onChange={e => setActivateMonths(Number(e.target.value))}
+                                    className="rounded-md border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                    {[1,2,3,6,12].map(m => <option key={m} value={m}>{m} month{m > 1 ? "s" : ""}</option>)}
+                                  </select>
+                                  <button onClick={() => handleActivate(u.id)}
+                                    className="flex items-center gap-1 rounded-md bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
+                                    <CheckCircle2 className="h-3 w-3" /> Confirm
+                                  </button>
+                                  <button onClick={() => setActivatingId(null)}
+                                    className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs text-foreground hover:bg-secondary/80 transition-colors">
+                                    <X className="h-3 w-3" /> Cancel
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Actions Tab */}
+        {/* Messages / Feedback Tab */}
+        {tab === "messages" && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{feedback.length} feedback messages</span>
+              <button onClick={fetchFeedback} className="text-xs text-primary hover:underline">Refresh</button>
+            </div>
+            {feedbackLoading ? (
+              <div className="flex items-center justify-center p-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
+            ) : feedback.length === 0 ? (
+              <div className="rounded-xl border border-border bg-card p-8 text-center">
+                <MessageSquare className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                <p className="text-xs text-muted-foreground">No feedback yet.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {feedback.map((fb) => (
+                  <div key={fb.id} className="rounded-xl border border-border bg-card p-4">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">{fb.user_email || "Anonymous"}</p>
+                        <p className="text-[10px] text-muted-foreground">{fb.category} · {fb.created_at ? new Date(fb.created_at).toLocaleDateString() : ""}</p>
+                      </div>
+                      {!fb.reply_text && (
+                        <button onClick={() => setReplyingId(replyingId === fb.id ? null : fb.id)}
+                          className="flex items-center gap-1 text-xs text-primary hover:underline">
+                          <Send className="h-3 w-3" /> Reply
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-sm text-foreground mb-2">{fb.feedback_text || fb.message}</p>
+                    {fb.reply_text && (
+                      <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
+                        <p className="text-[10px] font-semibold text-primary mb-1">Admin reply · {fb.replied_at ? new Date(fb.replied_at).toLocaleDateString() : ""}</p>
+                        <p className="text-xs text-foreground">{fb.reply_text}</p>
+                      </div>
+                    )}
+                    {replyingId === fb.id && (
+                      <div className="mt-2 flex gap-2">
+                        <textarea
+                          value={replyText} onChange={e => setReplyText(e.target.value)}
+                          placeholder="Type your reply…"
+                          rows={2}
+                          className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                        />
+                        <div className="flex flex-col gap-1">
+                          <button onClick={() => handleReply(fb.id)} disabled={replyLoading}
+                            className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
+                            {replyLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />} Send
+                          </button>
+                          <button onClick={() => setReplyingId(null)}
+                            className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-1.5 text-xs text-foreground hover:bg-secondary/80">
+                            <X className="h-3 w-3" /> Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {tab === "actions" && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[

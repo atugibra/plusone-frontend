@@ -19,10 +19,14 @@ import {
   Activity,
   Globe,
   CheckCircle2,
-  XCircle,
   Clock,
+  Sparkles,
+  Shield,
+  Zap,
 } from "lucide-react"
 import { BarChart, Bar, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
+
+const API = process.env.NEXT_PUBLIC_API_URL || "https://football-analytics-production-5b3d.up.railway.app"
 
 export default function DashboardPage() {
   const [leagues, setLeagues] = useState<any[]>([])
@@ -35,6 +39,8 @@ export default function DashboardPage() {
   const [matchCount, setMatchCount] = useState(0)
   const [playerCount, setPlayerCount] = useState(0)
   const [accuracyData, setAccuracyData] = useState<any>(null)
+  const [freePicks, setFreePicks] = useState<any[]>([])
+  const [picksLoading, setPicksLoading] = useState(true)
 
   const { compactMode, animationsEnabled } = useStore()
 
@@ -73,6 +79,24 @@ export default function DashboardPage() {
       getHealth().then(setHealth).catch(() => setHealth({ status: 'unhealthy' })),
       getPredictionAccuracy().then(res => setAccuracyData(res)).catch(() => {}),
     ]).finally(() => setLoading(false))
+  }, [])
+
+  // Fetch high-confidence verified picks (public, no auth needed)
+  useEffect(() => {
+    fetch(`${API}/api/predictions/feed?limit=6`)
+      .then(async (res) => {
+        if (!res.ok) return
+        const data = await res.json()
+        const arr = Array.isArray(data) ? data : (data.predictions ?? data.results ?? [])
+        // Filter: confidence >= 0.80 (model very sure), upcoming matches only
+        const highConf = arr.filter((p: any) => {
+          const conf = p.confidence ?? p.probability ?? 0
+          return conf >= 0.80
+        }).slice(0, 6)
+        setFreePicks(highConf)
+      })
+      .catch(() => {})
+      .finally(() => setPicksLoading(false))
   }, [])
 
   // Fetch total counts separately
@@ -141,6 +165,119 @@ export default function DashboardPage() {
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* ── Today's Verified Picks ─────────────────────────────────── */}
+        <div className={`mb-6 rounded-xl border border-primary/20 bg-card overflow-hidden ${entryAnim} delay-75`}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-primary/5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Today's Verified Picks</h2>
+              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary">80%+ CONFIDENCE</span>
+            </div>
+            <Link href="/predictions-feed" className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors">
+              View all <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          {picksLoading ? (
+            <div className="px-4 py-8 text-center text-xs text-muted-foreground">Loading verified picks…</div>
+          ) : freePicks.length === 0 ? (
+            <div className="px-4 py-8 text-center">
+              <Shield className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-xs text-muted-foreground">No high-confidence picks available today.</p>
+              <p className="text-[10px] text-muted-foreground/60 mt-1">The model only shows picks it's statistically certain about. Check back tomorrow.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border">
+              {freePicks.map((pick: any, idx: number) => {
+                const confidence = pick.confidence ?? pick.probability ?? 0
+                const confPct = Math.round(confidence * 100)
+                const confColor = confPct >= 85 ? "text-emerald-500" : confPct >= 75 ? "text-amber-500" : "text-orange-400"
+                const barColor = confPct >= 85 ? "bg-emerald-500" : confPct >= 75 ? "bg-amber-500" : "bg-orange-400"
+                const homeId = pick.home_team_id ?? pick.home_id
+                const awayId = pick.away_team_id ?? pick.away_id
+                return (
+                  <div key={pick.id ?? idx} className="p-4 hover:bg-secondary/20 transition-colors">
+                    {/* League + time */}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-semibold text-primary bg-primary/10 rounded-full px-2 py-0.5">{pick.league ?? "League"}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {pick.match_date ? new Date(pick.match_date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "TBC"}
+                      </span>
+                    </div>
+                    {/* Teams row */}
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <Link
+                        href={homeId ? `/team/${homeId}` : "#"}
+                        className="flex flex-col items-center gap-1 flex-1 hover:opacity-80 transition-opacity group"
+                      >
+                        <div className="w-9 h-9 rounded-full overflow-hidden border border-border bg-card flex items-center justify-center relative shrink-0">
+                          <Image src={pick.home_logo ?? "/placeholder-logo.png"} alt={pick.home_team ?? ""} fill sizes="36px" className="object-contain p-0.5" />
+                        </div>
+                        <span className="text-xs font-semibold text-foreground text-center line-clamp-1 group-hover:text-primary transition-colors">{pick.home_team}</span>
+                      </Link>
+                      <div className="flex flex-col items-center gap-0.5 shrink-0">
+                        <span className="text-xs font-bold text-muted-foreground">vs</span>
+                      </div>
+                      <Link
+                        href={awayId ? `/team/${awayId}` : "#"}
+                        className="flex flex-col items-center gap-1 flex-1 hover:opacity-80 transition-opacity group"
+                      >
+                        <div className="w-9 h-9 rounded-full overflow-hidden border border-border bg-card flex items-center justify-center relative shrink-0">
+                          <Image src={pick.away_logo ?? "/placeholder-logo.png"} alt={pick.away_team ?? ""} fill sizes="36px" className="object-contain p-0.5" />
+                        </div>
+                        <span className="text-xs font-semibold text-foreground text-center line-clamp-1 group-hover:text-primary transition-colors">{pick.away_team}</span>
+                      </Link>
+                    </div>
+                    {/* Prediction */}
+                    <div className="rounded-lg bg-secondary/50 px-3 py-2 mb-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-muted-foreground">Predicted outcome</span>
+                        <span className={`text-xs font-bold ${confColor}`}>{confPct}%</span>
+                      </div>
+                      <p className="text-xs font-semibold text-foreground">
+                        {pick.predicted_outcome ?? pick.prediction ?? pick.outcome ?? "—"}
+                      </p>
+                      {/* Confidence bar */}
+                      <div className="mt-1.5 h-1 w-full rounded-full bg-secondary">
+                        <div className={`h-1 rounded-full ${barColor} transition-all`} style={{ width: `${confPct}%` }} />
+                      </div>
+                    </div>
+                    {/* Markets */}
+                    <div className="flex flex-wrap gap-1">
+                      {pick.btts != null && (
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[9px] font-medium text-muted-foreground">
+                          BTTS: {pick.btts ? "Yes" : "No"}
+                        </span>
+                      )}
+                      {pick.over_under != null && (
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[9px] font-medium text-muted-foreground">
+                          {pick.over_under}
+                        </span>
+                      )}
+                      {pick.market_accuracy != null && (
+                        <span className="rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[9px] font-medium text-primary">
+                          Model: {Math.round(pick.market_accuracy * 100)}% acc
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Model accuracy footer */}
+          <div className="px-4 py-2 border-t border-border bg-secondary/20">
+            <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+              <Zap className="h-3 w-3 text-primary shrink-0" />
+              Only showing predictions where the model's confidence is 80% or above.
+              {accuracyData?.correct != null && accuracyData?.total != null && (
+                <span> Model has graded <strong className="text-foreground">{accuracyData.correct}/{accuracyData.total}</strong> predictions correctly.</span>
+              )}
+            </p>
           </div>
         </div>
 
