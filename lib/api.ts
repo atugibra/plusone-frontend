@@ -46,6 +46,8 @@ export const syncAll = (payload: any) => authReq('/api/sync/all', { method: 'POS
 export const getPredictionStatus = () => req('/api/predictions/status');
 export const trainPredictionModel = (payload: Record<string, any> = {}) =>
     authReq('/api/predictions/train', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+export const getEnrichmentStatus = () => req('/api/predictions/training-status/enrichment');
+export const trainEnrichmentModel = () => authReq('/api/predictions/train/enrichment', { method: 'POST' });
 export const predictMatchById = (payload: { home_team_id: number; away_team_id: number; league_id: number; season_id: number }) =>
     req('/api/predictions/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 export const predictConsensus = (payload: { home_team_id: number; away_team_id: number; league_id: number; season_id: number; match_id?: number }) =>

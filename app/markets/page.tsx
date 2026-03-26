@@ -5,7 +5,8 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import {
     getTeams, getLeagues, getDCStatus, trainDCModel,
-    getMarkets, getDCPredict, getDCLeaderboard, getValueBets
+    getMarkets, getDCPredict, getDCLeaderboard, getValueBets,
+    getEnrichmentStatus, trainEnrichmentModel
 } from "@/lib/api"
 import { TrendingUp, BarChart3, Zap, RefreshCw, AlertCircle, Trophy, Target, ChevronDown, ChevronUp } from "lucide-react"
 
@@ -62,6 +63,12 @@ export default function MarketsPage() {
     const [error, setError] = useState("")
     const [leaderboard, setLeaderboard] = useState<any[]>([])
     const [showLb, setShowLb] = useState(false)
+
+    // Enrichment Engine
+    const [enrichStatus, setEnrichStatus] = useState<any>(null)
+    const [enrichTraining, setEnrichTraining] = useState(false)
+    const [enrichPolling, setEnrichPolling] = useState(false)
+    const [enrichTrainMsg, setEnrichTrainMsg] = useState("")
     const [homeOdds, setHomeOdds] = useState("")
     const [drawOdds, setDrawOdds] = useState("")
     const [awayOdds, setAwayOdds] = useState("")
@@ -73,6 +80,7 @@ export default function MarketsPage() {
 
     useEffect(() => {
         getDCStatus().then(s => setDcStatus(s)).catch(() => null).finally(() => setDcLoading(false))
+        getEnrichmentStatus().then(s => setEnrichStatus(s)).catch(() => null)
         getLeagues().then(d => setLeagues(Array.isArray(d) ? d : []))
         getTeams({ limit: 1000 }).then(d => setTeams(Array.isArray(d) ? d : []))
     }, [])
@@ -101,6 +109,32 @@ export default function MarketsPage() {
             // Safety timeout after 3 min
             setTimeout(() => { clearInterval(poll); setPolling(false); setTrainMsg("⚠️ Timed out — check backend logs and try again.") }, 180000)
         } catch { setTrainMsg("❌ Train request failed."); setTraining(false) }
+    }
+
+    const handleEnrichTrain = async () => {
+        setEnrichTraining(true); setEnrichTrainMsg("Starting training…")
+        try {
+            await trainEnrichmentModel()
+            setEnrichTrainMsg("⏳ Training Enrichment ML in progress…")
+            setEnrichTraining(false)
+            setEnrichPolling(true)
+            const poll = setInterval(async () => {
+                try {
+                    const s = await getEnrichmentStatus()
+                    setEnrichStatus(s)
+                    if (s?.status !== "running" && s?.status !== "idle") {
+                        clearInterval(poll)
+                        setEnrichPolling(false)
+                        if (s?.status === "done") {
+                            setEnrichTrainMsg(`✅ Ready! Enrichment Model trained effectively.`)
+                        } else {
+                            setEnrichTrainMsg(`❌ Failed: ${s?.error || 'Unknown error'}`)
+                        }
+                    }
+                } catch { }
+            }, 3000)
+            setTimeout(() => { clearInterval(poll); setEnrichPolling(false); setEnrichTrainMsg("⚠️ Timed out.") }, 90000)
+        } catch { setEnrichTrainMsg("❌ Train request failed."); setEnrichTraining(false) }
     }
 
     const handleGetMarkets = async () => {
@@ -186,6 +220,24 @@ export default function MarketsPage() {
                             ))}
                         </div>
                     )}
+
+                    {/* Enrichment Engine Row */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-t border-border">
+                        <div>
+                            <h2 className="text-sm font-bold text-foreground">Enrichment ML Engine</h2>
+                            <p className="text-xs text-muted-foreground">Extreme Gradient Boosting (Odds + Lines Integration)</p>
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                            {(enrichStatus?.status === "done"
+                                ? <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 text-success px-3 py-1 text-[10px] font-semibold"><span className="h-1 w-1 rounded-full bg-success" />Trained</span>
+                                : <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/10 text-warning px-3 py-1 text-[10px] font-semibold"><AlertCircle className="h-3 w-3" />Needs Training</span>
+                            )}
+                            <button onClick={handleEnrichTrain} disabled={enrichTraining || enrichPolling} className="inline-flex items-center gap-2 rounded-lg bg-secondary text-foreground px-3 py-1.5 text-xs font-semibold hover:bg-secondary/80 transition-colors disabled:opacity-60 border border-border">
+                                <RefreshCw className={`h-3 w-3 ${(enrichTraining || enrichPolling) ? "animate-spin" : ""}`} />{enrichTraining ? "Starting…" : enrichPolling ? "Training…" : enrichStatus?.status === "done" ? "Retrain" : "Train Engine"}
+                            </button>
+                        </div>
+                    </div>
+                    {enrichTrainMsg && <div className={`px-6 py-2 text-xs border-t border-border ${enrichTrainMsg.startsWith("✅") ? "bg-success/5 text-success" : enrichTrainMsg.startsWith("❌") ? "bg-destructive/5 text-destructive" : "text-muted-foreground"}`}>{enrichTrainMsg}</div>}
 
                     {/* Team picker */}
                     <div className="px-6 py-5">
