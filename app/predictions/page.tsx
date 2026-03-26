@@ -967,14 +967,14 @@ export default function PredictionsPage() {
               <div>
                 <h2 className="text-base font-bold text-foreground">Dynamic Consensus Engine</h2>
                 <p className="text-xs text-muted-foreground">
-                  Blends DC + ML + Legacy engines — weights adapt to historical accuracy
+                  Blends DC + ML + Legacy + Enrichment models — weights adapt to historical accuracy
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-semibold">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary inline-block animate-pulse" />
-                3 Engines Active
+                4 Engines Active
               </span>
             </div>
           </div>
@@ -1118,10 +1118,10 @@ export default function PredictionsPage() {
                     {/* Per-engine breakdown */}
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Engine Breakdown</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {(["dc", "ml", "legacy"] as const).map((key) => {
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        {(["dc", "ml", "legacy", "enrichment"] as const).map((key) => {
                           const e        = eng[key] ?? {}
-                          const labels   = { dc: "Dixon-Coles", ml: "ML Ensemble", legacy: "Legacy Heuristic" }
+                          const labels   = { dc: "Dixon-Coles", ml: "ML Ensemble", legacy: "Legacy Heuristic", enrichment: "Enrichment ML" }
                           const outcome  = e.predicted_outcome ?? "—"
                           const outcomeColor =
                             outcome === cs.predicted_outcome ? "text-success" : "text-muted-foreground"
