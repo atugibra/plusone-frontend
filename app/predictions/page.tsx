@@ -236,7 +236,7 @@ export default function PredictionsPage() {
           }
         } catch { }
       }, 3000)
-      setTimeout(() => { clearInterval(poll); setEnrichPolling(false); setEnrichTrainMsg("⚠️ Timed out.") }, 90000)
+      setTimeout(() => { clearInterval(poll); setEnrichPolling(false); setEnrichTrainMsg("⚠️ Timed out. Refresh next minute.") }, 600000)
     } catch {
       setEnrichTrainMsg("❌ Train request failed.")
       setEnrichTraining(false)
