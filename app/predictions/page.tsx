@@ -14,8 +14,10 @@ import {
   getPredictionResults,
   getPredictionAccuracy,
   API,
+  getEnrichmentStatus,
+  trainEnrichmentModel,
 } from "@/lib/api"
-import { useStore } from "@/lib/store"
+
 import {
   TrendingUp,
   ChevronRight,
@@ -84,22 +86,27 @@ export default function PredictionsPage() {
   const [predictingConsensus, setPredictingConsensus] = useState<number | null>(null)
   const [consensusLeague, setConsensusLeague] = useState("")
 
+  // Enrichment Engine State
+  const [enrichStatus, setEnrichStatus] = useState<any>(null)
+  const [enrichTraining, setEnrichTraining] = useState(false)
+  const [enrichPolling, setEnrichPolling] = useState(false)
+  const [enrichTrainMsg, setEnrichTrainMsg] = useState("")
+
   // Polling ref so we can cancel it on unmount
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { compactMode, animationsEnabled } = useStore()
-  
   // Compact classes
-  const gapClass = compactMode ? "gap-2" : "gap-4 lg:gap-6"
-  const paddingClass = compactMode ? "px-2 py-2" : "px-4 lg:px-6 py-6"
-  const cardPadding = compactMode ? "p-3" : "p-6"
+  const gapClass = "gap-4 lg:gap-6"
+  const paddingClass = "px-4 lg:px-6 py-6"
+  const cardPadding = "p-6"
   
   // Base animation class
-  const entryAnim = animationsEnabled ? "animate-in fade-in slide-in-from-bottom-4 duration-500" : ""
+  const entryAnim = "animate-in fade-in slide-in-from-bottom-4 duration-500"
 
   useEffect(() => {
     getLeagues().then((data: any) => setLeagues(Array.isArray(data) ? data : []))
     getTeams({ limit: 1000 }).then((data: any) => setTeams(Array.isArray(data) ? data : []))
+    getEnrichmentStatus().then((s: any) => setEnrichStatus(s)).catch(() => null)
     getPredictionStatus()
       .then((s: any) => setEngineStatus(s))
       .catch(() => setEngineStatus(null))
@@ -129,10 +136,10 @@ export default function PredictionsPage() {
   // The backend /train endpoint returns immediately (BackgroundTasks).
   // We poll /training-status every 3s until done or error.
   const pollTrainingStatus = async (attempts = 0) => {
-    const MAX_ATTEMPTS = 80 // ~4 minutes at 3s intervals
+    const MAX_ATTEMPTS = 200 // ~10 minutes at 3s intervals
 
     if (attempts >= MAX_ATTEMPTS) {
-      setTrainResult({ success: false, error: "Training timed out after 4 minutes. Check backend logs." })
+      setTrainResult({ success: false, error: "Training taking longer than 10 minutes. Check backend logs." })
       setTraining(false)
       setTrainingMessage("")
       return
@@ -203,6 +210,36 @@ export default function PredictionsPage() {
         setTraining(false)
         setTrainingMessage("")
       }
+    }
+  }
+
+  const handleEnrichTrain = async () => {
+    setEnrichTraining(true)
+    setEnrichTrainMsg("Starting training…")
+    try {
+      await trainEnrichmentModel()
+      setEnrichTrainMsg("⏳ Training Enrichment ML in progress…")
+      setEnrichTraining(false)
+      setEnrichPolling(true)
+      const poll = setInterval(async () => {
+        try {
+          const s = await getEnrichmentStatus()
+          setEnrichStatus(s)
+          if (s?.status !== "running" && s?.status !== "idle") {
+            clearInterval(poll)
+            setEnrichPolling(false)
+            if (s?.status === "done") {
+              setEnrichTrainMsg(`✅ Ready! Enrichment Model trained effectively.`)
+            } else {
+              setEnrichTrainMsg(`❌ Failed: ${s?.error || 'Unknown error'}`)
+            }
+          }
+        } catch { }
+      }, 3000)
+      setTimeout(() => { clearInterval(poll); setEnrichPolling(false); setEnrichTrainMsg("⚠️ Timed out.") }, 90000)
+    } catch {
+      setEnrichTrainMsg("❌ Train request failed.")
+      setEnrichTraining(false)
     }
   }
 
@@ -447,6 +484,25 @@ export default function PredictionsPage() {
                 : `❌ ${trainResult.error || "Training failed"}`}
             </div>
           )}
+
+          {/* Enrichment Engine Row inside ML Engine Box */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-t border-border">
+              <div>
+                  <h2 className="text-sm font-bold text-foreground">Enrichment ML Engine</h2>
+                  <p className="text-xs text-muted-foreground">Extreme Gradient Boosting (Odds + Lines Integration)</p>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                  {(enrichStatus?.status === "done"
+                      ? <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 text-success px-3 py-1 text-[10px] font-semibold"><span className="h-1 w-1 rounded-full bg-success" />Trained</span>
+                      : <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/10 text-warning px-3 py-1 text-[10px] font-semibold"><AlertCircle className="h-3 w-3" />Needs Training</span>
+                  )}
+                  <button onClick={handleEnrichTrain} disabled={enrichTraining || enrichPolling} className="inline-flex items-center gap-2 rounded-lg bg-secondary text-foreground px-3 py-1.5 text-xs font-semibold hover:bg-secondary/80 transition-colors disabled:opacity-60 border border-border">
+                      <RefreshCw className={`h-3 w-3 ${(enrichTraining || enrichPolling) ? "animate-spin" : ""}`} />{enrichTraining ? "Starting…" : enrichPolling ? "Training…" : enrichStatus?.status === "done" ? "Retrain" : "Train Engine"}
+                  </button>
+              </div>
+          </div>
+          {enrichTrainMsg && <div className={`px-6 py-2 text-xs border-t border-border ${enrichTrainMsg.startsWith("✅") ? "bg-success/5 text-success" : enrichTrainMsg.startsWith("❌") ? "bg-destructive/5 text-destructive" : "text-muted-foreground"}`}>{enrichTrainMsg}</div>}
+
 
           {/* Fixture List */}
           <div className="px-6 py-4">
