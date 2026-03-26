@@ -400,29 +400,31 @@ function MatchCard({ pred, rank }: { pred: Prediction; rank: number }) {
             </div>
           )}
 
-          {/* 5. DC Model Breakdown */}
+          {/* 5. Consensus Model Breakdown */}
           {breakdown && Object.keys(breakdown).length > 0 && (
             <div className="rounded-lg border border-border bg-card px-4 py-4">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Activity className="h-3 w-3" /> Model Breakdown (DC Engine)
+                <Activity className="h-3 w-3" /> Model Breakdown (Consensus Engine)
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border">
-                      {["Model", "Home Win", "Draw", "Away Win"].map(h => (
+                      {["Model", "Weight", "Home Win", "Draw", "Away Win"].map(h => (
                         <th key={h} className="py-2 text-muted-foreground font-medium text-right first:text-left">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {[
-                      ["Dixon-Coles", breakdown.dixon_coles],
-                      ["Elo",         breakdown.elo],
-                      ["xG Proxy",   breakdown.xg],
-                    ].map(([name, m]: any) => m && (
+                      ["Dixon-Coles", breakdown.dc, pred.weights?.dc],
+                      ["XGBoost ML",  breakdown.ml, pred.weights?.ml],
+                      ["Rule-based",  breakdown.legacy, pred.weights?.legacy],
+                      ["Enrichment",  breakdown.enrichment, pred.weights?.enrichment],
+                    ].map(([name, m, w]: any) => m && (
                       <tr key={name} className="border-b border-border/40">
                         <td className="py-2 text-muted-foreground">{name}</td>
+                        <td className="py-2 text-muted-foreground text-right">{w ? Math.round(w * 100) + '%' : '0%'}</td>
                         <td className="py-2 text-right font-mono">{Math.round((m.home_win ?? 0) * 100)}%</td>
                         <td className="py-2 text-right font-mono">{Math.round((m.draw ?? 0) * 100)}%</td>
                         <td className="py-2 text-right font-mono">{Math.round((m.away_win ?? 0) * 100)}%</td>
