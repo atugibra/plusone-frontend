@@ -28,6 +28,7 @@ export interface Player {
     id: number;
     team_id?: number;
     team: string;
+    logo_url?: string;
     league?: string;
     player_name: string;
     nationality?: string;
@@ -61,6 +62,7 @@ export interface Standing {
 
 export interface SquadStat {
     team: string;
+    logo_url?: string;
     split: "for" | "against";
     league?: string;
     season?: string;
