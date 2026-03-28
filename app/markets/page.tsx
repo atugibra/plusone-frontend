@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import Image from "next/image"
 import {
     getTeams, getLeagues, getDCStatus, trainDCModel,
     getMarkets, getDCPredict, getDCLeaderboard, getValueBets,
@@ -294,7 +295,21 @@ export default function MarketsPage() {
                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
                                 <div>
                                     <p className="text-xs text-muted-foreground mb-1">Ensemble Prediction</p>
-                                    <h2 className="text-lg font-black">{dcPred.home_team} <span className="text-muted-foreground font-normal">vs</span> {dcPred.away_team}</h2>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex flex-col items-center">
+                                            <div className="w-12 h-12 rounded-full overflow-hidden border border-border bg-card flex items-center justify-center relative shadow-sm mb-1">
+                                                 <Image src={dcPred.home_logo || "/placeholder-logo.png"} alt={`${dcPred.home_team} logo`} fill sizes="48px" className="object-contain p-1" />
+                                            </div>
+                                            <h2 className="text-lg font-black">{dcPred.home_team}</h2>
+                                        </div>
+                                        <span className="text-muted-foreground font-bold text-sm mx-2">vs</span>
+                                        <div className="flex flex-col items-center">
+                                            <div className="w-12 h-12 rounded-full overflow-hidden border border-border bg-card flex items-center justify-center relative shadow-sm mb-1">
+                                                <Image src={dcPred.away_logo || "/placeholder-logo.png"} alt={`${dcPred.away_team} logo`} fill sizes="48px" className="object-contain p-1" />
+                                            </div>
+                                            <h2 className="text-lg font-black">{dcPred.away_team}</h2>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="text-right">
                                     <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5"><span className="text-sm font-black text-primary">{dcPred.prediction}</span></div>

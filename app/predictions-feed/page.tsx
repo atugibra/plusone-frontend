@@ -10,6 +10,7 @@ import {
   RefreshCw, AlertCircle, Target, Zap, Clock, Trophy, BarChart3,
   ChevronRight, Shield, Calendar, ArrowRight, Activity,
 } from "lucide-react"
+import Image from "next/image"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ interface Prediction {
     away_team: string
     home_team_id?: number
     away_team_id?: number
+    home_logo?: string
+    away_logo?: string
     league: string
     league_id?: number
     date?: string
@@ -276,9 +279,23 @@ function MatchCard({ pred, rank }: { pred: Prediction; rank: number }) {
               {match.gameweek && <span className="text-[10px] text-muted-foreground">· GW{match.gameweek}</span>}
               {match.season   && <span className="text-[10px] text-muted-foreground">· {match.season}</span>}
             </div>
-            <p className="text-sm font-bold text-foreground leading-tight">
-              {match.home_team} <span className="text-muted-foreground font-normal text-xs">vs</span> {match.away_team}
-            </p>
+            <div className="flex items-center gap-3 mt-1.5">
+              <div className="flex items-center gap-2 flex-1 justify-end">
+                <span className="text-sm font-semibold text-foreground leading-tight truncate">{match.home_team}</span>
+                <div className="w-6 h-6 rounded-full overflow-hidden border border-border bg-card flex items-center justify-center relative shrink-0">
+                   <Image src={match.home_logo || "/placeholder-logo.png"} alt={match.home_team} fill sizes="24px" className="object-contain p-0.5" />
+                </div>
+              </div>
+              
+              <span className="text-[10px] font-bold text-muted-foreground w-4 text-center">vs</span>
+              
+              <div className="flex items-center gap-2 flex-1 justify-start">
+                <div className="w-6 h-6 rounded-full overflow-hidden border border-border bg-card flex items-center justify-center relative shrink-0">
+                   <Image src={match.away_logo || "/placeholder-logo.png"} alt={match.away_team} fill sizes="24px" className="object-contain p-0.5" />
+                </div>
+                <span className="text-sm font-semibold text-foreground leading-tight truncate">{match.away_team}</span>
+              </div>
+            </div>
             <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
               <Clock className="h-3 w-3 inline-block" />
               {fmtDate(match.date || match.match_date)}
