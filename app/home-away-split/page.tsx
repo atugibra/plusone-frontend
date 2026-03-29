@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer"
 import { getVenueStats, getLeagues, getSeasons, getTeams } from "@/lib/api"
 import { League, Season, Standing } from "@/lib/types"
 import { LayoutSplit, ChevronRight, Home, Plane, Filter } from "lucide-react"
+import { TeamLogo } from "@/components/team-logo"
 
 const LEAGUES_WITH_HISTORY = ["2. bundesliga", "2. Bundesliga", "bundesliga 2", "2 bundesliga"]
 function isBundesliga2(leagueName: string) {
@@ -114,6 +115,7 @@ export default function HomeAwaySplitPage() {
                     team: row.team,
                     league: row.league,
                     season: row.season,
+                    logo_url: row.logo_url,
                     home: { ...zeroStats },
                     away: { ...zeroStats }
                 }
@@ -299,7 +301,12 @@ export default function HomeAwaySplitPage() {
                                                     }`}
                                             >
                                                 <td className="px-3 py-3 text-center font-mono text-muted-foreground">{i + 1}</td>
-                                                <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">{s.team}</td>
+                                                <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">
+                                                    <div className="flex items-center gap-2">
+                                                        <TeamLogo src={s.logo_url} alt={`${s.team} logo`} size={20} className="bg-white/5" />
+                                                        <span className="truncate">{s.team}</span>
+                                                    </div>
+                                                </td>
                                                 <td className="px-3 py-3 text-center text-xs text-muted-foreground hidden sm:table-cell">
                                                     <span className="inline-block bg-secondary rounded-md px-2 py-1">{s.league}</span>
                                                 </td>

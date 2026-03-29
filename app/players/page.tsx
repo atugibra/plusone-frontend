@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer"
 import { getPlayers, getLeagues } from "@/lib/api"
 import { Player, League } from "@/lib/types"
 import { Users, Search, ArrowUpDown, Filter } from "lucide-react"
+import { TeamLogo } from "@/components/team-logo"
 
 type SortCol = "goals" | "assists" | "games" | "minutes" | "playerName"
 
@@ -158,7 +159,12 @@ export default function PlayersPage() {
                         <span className="lg:hidden text-[10px] text-muted-foreground ml-1.5">{player.team}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-sm text-muted-foreground hidden lg:table-cell">{player.team}</td>
+                    <td className="px-3 py-2.5 text-sm text-muted-foreground hidden lg:table-cell">
+                      <div className="flex items-center gap-2">
+                        <TeamLogo src={player.logo_url} alt={`${player.team} logo`} size={20} className="bg-white/5" />
+                        <span className="truncate">{player.team}</span>
+                      </div>
+                    </td>
                     <td className="px-2 py-2.5 text-center hidden md:table-cell">
                       <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${player.position === "FW"
                         ? "bg-destructive/10 text-destructive"

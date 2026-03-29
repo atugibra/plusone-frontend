@@ -14,8 +14,6 @@ import {
   getPredictionResults,
   getPredictionAccuracy,
   API,
-  getEnrichmentStatus,
-  trainEnrichmentModel,
 } from "@/lib/api"
 
 import {
@@ -47,7 +45,7 @@ import {
   Bar,
   Cell,
 } from "recharts"
-import Image from "next/image"
+import { TeamLogo } from "@/components/team-logo"
 
 export default function PredictionsPage() {
   // Live DB results
@@ -86,11 +84,6 @@ export default function PredictionsPage() {
   const [predictingConsensus, setPredictingConsensus] = useState<number | null>(null)
   const [consensusLeague, setConsensusLeague] = useState("")
 
-  // Enrichment Engine State
-  const [enrichStatus, setEnrichStatus] = useState<any>(null)
-  const [enrichTraining, setEnrichTraining] = useState(false)
-  const [enrichPolling, setEnrichPolling] = useState(false)
-  const [enrichTrainMsg, setEnrichTrainMsg] = useState("")
 
   // Polling ref so we can cancel it on unmount
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -106,7 +99,6 @@ export default function PredictionsPage() {
   useEffect(() => {
     getLeagues().then((data: any) => setLeagues(Array.isArray(data) ? data : []))
     getTeams({ limit: 1000 }).then((data: any) => setTeams(Array.isArray(data) ? data : []))
-    getEnrichmentStatus().then((s: any) => setEnrichStatus(s)).catch(() => null)
     getPredictionStatus()
       .then((s: any) => setEngineStatus(s))
       .catch(() => setEngineStatus(null))
@@ -210,36 +202,6 @@ export default function PredictionsPage() {
         setTraining(false)
         setTrainingMessage("")
       }
-    }
-  }
-
-  const handleEnrichTrain = async () => {
-    setEnrichTraining(true)
-    setEnrichTrainMsg("Starting training…")
-    try {
-      await trainEnrichmentModel()
-      setEnrichTrainMsg("⏳ Training Enrichment ML in progress…")
-      setEnrichTraining(false)
-      setEnrichPolling(true)
-      const poll = setInterval(async () => {
-        try {
-          const s = await getEnrichmentStatus()
-          setEnrichStatus(s)
-          if (s?.status !== "running" && s?.status !== "idle") {
-            clearInterval(poll)
-            setEnrichPolling(false)
-            if (s?.status === "done") {
-              setEnrichTrainMsg(`✅ Ready! Enrichment Model trained effectively.`)
-            } else {
-              setEnrichTrainMsg(`❌ Failed: ${s?.error || 'Unknown error'}`)
-            }
-          }
-        } catch { }
-      }, 3000)
-      setTimeout(() => { clearInterval(poll); setEnrichPolling(false); setEnrichTrainMsg("⚠️ Timed out. Refresh next minute.") }, 600000)
-    } catch {
-      setEnrichTrainMsg("❌ Train request failed.")
-      setEnrichTraining(false)
     }
   }
 
@@ -485,24 +447,6 @@ export default function PredictionsPage() {
             </div>
           )}
 
-          {/* Enrichment Engine Row inside ML Engine Box */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-t border-border">
-              <div>
-                  <h2 className="text-sm font-bold text-foreground">Enrichment ML Engine</h2>
-                  <p className="text-xs text-muted-foreground">Extreme Gradient Boosting (Odds + Lines Integration)</p>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                  {(enrichStatus?.status === "done"
-                      ? <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 text-success px-3 py-1 text-[10px] font-semibold"><span className="h-1 w-1 rounded-full bg-success" />Trained</span>
-                      : <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/10 text-warning px-3 py-1 text-[10px] font-semibold"><AlertCircle className="h-3 w-3" />Needs Training</span>
-                  )}
-                  <button onClick={handleEnrichTrain} disabled={enrichTraining || enrichPolling} className="inline-flex items-center gap-2 rounded-lg bg-secondary text-foreground px-3 py-1.5 text-xs font-semibold hover:bg-secondary/80 transition-colors disabled:opacity-60 border border-border">
-                      <RefreshCw className={`h-3 w-3 ${(enrichTraining || enrichPolling) ? "animate-spin" : ""}`} />{enrichTraining ? "Starting…" : enrichPolling ? "Training…" : enrichStatus?.status === "done" ? "Retrain" : "Train Engine"}
-                  </button>
-              </div>
-          </div>
-          {enrichTrainMsg && <div className={`px-6 py-2 text-xs border-t border-border ${enrichTrainMsg.startsWith("✅") ? "bg-success/5 text-success" : enrichTrainMsg.startsWith("❌") ? "bg-destructive/5 text-destructive" : "text-muted-foreground"}`}>{enrichTrainMsg}</div>}
-
 
           {/* Fixture List */}
           <div className="px-6 py-4">
@@ -546,11 +490,10 @@ export default function PredictionsPage() {
                   >
                     <div className="flex-1 min-w-0 flex items-center gap-3">
                       <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
-                        <Image
-                           src={fx.home_logo || "/placeholder-logo.png"}
+                        <TeamLogo
+                           src={fx.home_logo}
                            alt={`${fx.home_team} logo`}
-                           fill
-                           sizes="24px"
+                           size={24}
                            className="object-contain p-0.5"
                         />
                       </div>
@@ -567,11 +510,10 @@ export default function PredictionsPage() {
                         </p>
                       </div>
                       <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
-                        <Image
-                           src={fx.away_logo || "/placeholder-logo.png"}
+                        <TeamLogo
+                           src={fx.away_logo}
                            alt={`${fx.away_team} logo`}
-                           fill
-                           sizes="24px"
+                           size={24}
                            className="object-contain p-0.5"
                         />
                       </div>
@@ -615,11 +557,10 @@ export default function PredictionsPage() {
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                            <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
-                             <Image
-                               src={fixtureResult.match?.home_logo || "/placeholder-logo.png"}
+                             <TeamLogo
+                               src={fixtureResult.match?.home_logo}
                                alt={fixtureResult.match?.home_team || "Home"}
-                               fill
-                               sizes="40px"
+                               size={40}
                                className="object-contain p-1"
                              />
                            </div>
@@ -629,11 +570,10 @@ export default function PredictionsPage() {
                         <div className="flex items-center gap-2">
                            <p className="text-lg font-bold text-foreground">{fixtureResult.match?.away_team}</p>
                            <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
-                             <Image
-                               src={fixtureResult.match?.away_logo || "/placeholder-logo.png"}
+                             <TeamLogo
+                               src={fixtureResult.match?.away_logo}
                                alt={fixtureResult.match?.away_team || "Away"}
-                               fill
-                               sizes="40px"
+                               size={40}
                                className="object-contain p-1"
                              />
                            </div>
@@ -974,7 +914,7 @@ export default function PredictionsPage() {
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-semibold">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary inline-block animate-pulse" />
-                4 Engines Active
+                3 Engines Active
               </span>
             </div>
           </div>
@@ -1011,16 +951,34 @@ export default function PredictionsPage() {
                     }`}
                     onClick={() => handleConsensusPredict(fx)}
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5">
-                        {fx.home_team}
-                        <span className="text-muted-foreground font-normal text-xs">vs</span>
-                        {fx.away_team}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {fx.league} · {fx.match_date ? new Date(fx.match_date).toLocaleDateString() : "TBD"}
-                        {fx.gameweek ? ` · GW${fx.gameweek}` : ""}
-                      </p>
+                    <div className="flex-1 min-w-0 flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                        <TeamLogo
+                           src={fx.home_logo}
+                           alt={`${fx.home_team} logo`}
+                           size={24}
+                           className="object-contain p-0.5"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5">
+                          {fx.home_team}
+                          <span className="text-muted-foreground font-normal text-xs">vs</span>
+                          {fx.away_team}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {fx.league} · {fx.match_date ? new Date(fx.match_date).toLocaleDateString() : "TBD"}
+                          {fx.gameweek ? ` · GW${fx.gameweek}` : ""}
+                        </p>
+                      </div>
+                      <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                        <TeamLogo
+                           src={fx.away_logo}
+                           alt={`${fx.away_team} logo`}
+                           size={24}
+                           className="object-contain p-0.5"
+                        />
+                      </div>
                     </div>
                     <button
                       disabled={predictingConsensus === fx.id}
@@ -1077,11 +1035,33 @@ export default function PredictionsPage() {
                   <div className="space-y-5">
                     {/* Match header */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                      <div>
+                      <div className="flex flex-col gap-2">
                         <p className="text-xs text-muted-foreground uppercase tracking-wider">{match.league}</p>
-                        <p className="text-lg font-bold text-foreground mt-0.5">
-                          {match.home_team} <span className="text-muted-foreground font-normal text-sm">vs</span> {match.away_team}
-                        </p>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                             <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                               <TeamLogo
+                                 src={consensusFixture?.home_logo}
+                                 alt={match.home_team || "Home"}
+                                 size={40}
+                                 className="object-contain p-1"
+                               />
+                             </div>
+                             <p className="text-lg font-bold text-foreground">{match.home_team}</p>
+                          </div>
+                          <span className="text-muted-foreground font-medium px-2">vs</span>
+                          <div className="flex items-center gap-2">
+                             <p className="text-lg font-bold text-foreground">{match.away_team}</p>
+                             <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
+                               <TeamLogo
+                                 src={consensusFixture?.away_logo}
+                                 alt={match.away_team || "Away"}
+                                 size={40}
+                                 className="object-contain p-1"
+                               />
+                             </div>
+                          </div>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${confidenceColor}`}>
@@ -1118,10 +1098,10 @@ export default function PredictionsPage() {
                     {/* Per-engine breakdown */}
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Engine Breakdown</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        {(["dc", "ml", "legacy", "enrichment"] as const).map((key) => {
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {(["dc", "ml", "legacy"] as const).map((key) => {
                           const e        = eng[key] ?? {}
-                          const labels   = { dc: "Dixon-Coles", ml: "ML Ensemble", legacy: "Legacy Heuristic", enrichment: "Enrichment ML" }
+                          const labels   = { dc: "Dixon-Coles", ml: "ML Ensemble", legacy: "Legacy Heuristic" }
                           const outcome  = e.predicted_outcome ?? "—"
                           const outcomeColor =
                             outcome === cs.predicted_outcome ? "text-success" : "text-muted-foreground"

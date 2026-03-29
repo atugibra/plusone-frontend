@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer"
 import { getTeams, getH2H } from "@/lib/api"
 import { Match } from "@/lib/types"
 import { Swords, Search } from "lucide-react"
+import { TeamLogo } from "@/components/team-logo"
 
 export default function HeadToHeadPage() {
     const [teams, setTeams] = useState<Record<string, any>[]>([])
@@ -167,7 +168,10 @@ export default function HeadToHeadPage() {
                                                                 <span className="inline-block bg-secondary rounded-md px-2 py-1 text-xs text-muted-foreground">{m.league}</span>
                                                             </td>
                                                             <td className={`px-4 py-3 text-right font-semibold ${isHomeWinner ? "text-foreground" : "text-muted-foreground"}`}>
-                                                                {m.home_team}
+                                                                <div className="flex items-center justify-end gap-2">
+                                                                    <span className="truncate">{m.home_team}</span>
+                                                                    <TeamLogo src={m.home_logo} alt={`${m.home_team} logo`} size={20} className="bg-white/5" />
+                                                                </div>
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <span className="inline-flex items-center justify-center rounded-md bg-secondary/50 px-3 py-1 font-mono font-bold text-foreground min-w-[60px]">
@@ -175,7 +179,10 @@ export default function HeadToHeadPage() {
                                                                 </span>
                                                             </td>
                                                             <td className={`px-4 py-3 text-left font-semibold ${isAwayWinner ? "text-foreground" : "text-muted-foreground"}`}>
-                                                                {m.away_team}
+                                                                <div className="flex items-center justify-start gap-2">
+                                                                    <TeamLogo src={m.away_logo} alt={`${m.away_team} logo`} size={20} className="bg-white/5" />
+                                                                    <span className="truncate">{m.away_team}</span>
+                                                                </div>
                                                             </td>
                                                             <td className="px-4 py-3 text-muted-foreground text-xs hidden lg:table-cell truncate max-w-[150px]">
                                                                 {m.venue || "—"}

@@ -7,6 +7,7 @@ import { getLeagues, getStandings } from "@/lib/api"
 import { League, Standing } from "@/lib/types"
 import { Trophy, ChevronRight, ArrowUpDown, Globe } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { TeamLogo } from "@/components/team-logo"
 
 const countryFlags: Record<string, string> = {
   England: "ENG",
@@ -223,7 +224,12 @@ function StandingRowComponent({ row, idx }: { row: any; idx: number }) {
   return (
     <tr className={`border-b border-border/50 hover:bg-secondary/20 transition-colors ${getZoneColor(row.rank || idx + 1)}`}>
       <td className="px-2 py-2.5 text-center text-xs font-bold font-mono text-muted-foreground">{row.rank || idx + 1}</td>
-      <td className="px-3 py-2.5 text-sm font-semibold text-foreground">{row.team_id || row.team}</td>
+      <td className="px-3 py-2.5 text-sm font-semibold text-foreground">
+        <div className="flex items-center gap-2">
+           <TeamLogo src={row.logo_url} alt={`${row.team_id || row.team} logo`} size={20} className="bg-white/5" />
+           <span className="truncate">{row.team_id || row.team}</span>
+        </div>
+      </td>
       <td className="px-2 py-2.5 text-center text-xs font-mono text-muted-foreground hidden sm:table-cell">{row.matches_played || 0}</td>
       <td className="px-2 py-2.5 text-center text-xs font-mono text-muted-foreground hidden sm:table-cell">{row.wins || 0}</td>
       <td className="px-2 py-2.5 text-center text-xs font-mono text-muted-foreground hidden sm:table-cell">{row.draws || 0}</td>

@@ -95,6 +95,7 @@ export const getPerformanceDrift = () => req('/api/performance/drift');
 export const getCalibration = () => req('/api/performance/calibration');
 export const getPerLeague = () => req('/api/performance/per-league');
 export const getConfusionMatrix = () => req('/api/performance/confusion');
+export const getEnginePerformance = () => req('/api/performance/engines');
 // Grade all completed predictions against actual match results (requires admin auth)
 export const evaluatePredictions = () =>
     authReq('/api/prediction-log/evaluate', { method: 'POST' });

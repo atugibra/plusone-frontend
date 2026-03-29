@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { getPerformance, getPerformanceDrift, getCalibration, getPerLeague, getConfusionMatrix, evaluatePredictions, recalibrate } from "@/lib/api"
-import { BarChart3, TrendingUp, Target, CheckCircle2, AlertCircle, RefreshCw, Zap } from "lucide-react"
+import { getPerformance, getPerformanceDrift, getCalibration, getPerLeague, getConfusionMatrix, evaluatePredictions, recalibrate, getEnginePerformance } from "@/lib/api"
+import { BarChart3, TrendingUp, Target, CheckCircle2, AlertCircle, RefreshCw, Zap, Cpu } from "lucide-react"
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell
@@ -152,6 +152,122 @@ function MarketAccuracySection({ data }: { data: any }) {
     )
 }
 
+// ─── Engine Breakdown Section ─────────────────────────────────────────────────
+
+const ENGINE_META: Record<string, { label: string; color: string; bg: string }> = {
+    dc:        { label: "Dixon-Coles",    color: "#3b82f6", bg: "bg-blue-500/10" },
+    ml:        { label: "ML Ensemble",    color: "#8b5cf6", bg: "bg-violet-500/10" },
+    legacy:    { label: "Legacy Heuristic", color: "#f59e0b", bg: "bg-amber-500/10" },
+    consensus: { label: "Consensus Blend", color: "#22c55e", bg: "bg-green-500/10" },
+}
+
+function EngineBar({ pct, color }: { pct: number | null; color: string }) {
+    if (pct == null) return <span className="text-xs text-muted-foreground">—</span>
+    return (
+        <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                <div className="h-full rounded-full transition-all"
+                    style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: color }} />
+            </div>
+            <span className={`text-xs font-mono font-bold w-10 text-right ${
+                pct >= 55 ? "text-green-400" : pct >= 45 ? "text-foreground" : "text-red-400"
+            }`}>{pct}%</span>
+        </div>
+    )
+}
+
+function EngineBreakdownSection({ data }: { data: any }) {
+    if (!data) return null
+    const { overall, last_30, by_outcome } = data
+    const engines = ["dc", "ml", "legacy", "consensus"] as const
+
+    // Find best overall engine
+    const best = engines.reduce((b, e) =>
+        (overall[e]?.accuracy_pct ?? 0) > (overall[b]?.accuracy_pct ?? 0) ? e : b, "dc" as typeof engines[number]
+    )
+
+    return (
+        <Section title="Engine Breakdown" sub="Per-engine accuracy from evaluated predictions. DC & ML now learn from mistakes via live calibration after each sync.">
+            {/* Engine scorecards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+                {engines.map(eng => {
+                    const meta = ENGINE_META[eng]
+                    const stats = overall[eng]
+                    const trend = last_30[eng]
+                    const isBest = eng === best && stats?.evaluated > 0
+                    return (
+                        <div key={eng}
+                            className={`rounded-lg border p-3 relative ${
+                                isBest ? "border-green-500/40 bg-green-500/5" : "border-border bg-card"
+                            }`}>
+                            {isBest && (
+                                <span className="absolute top-2 right-2 text-[9px] font-bold text-green-400 bg-green-500/20 px-1.5 py-0.5 rounded-full">BEST</span>
+                            )}
+                            <p className="text-[10px] text-muted-foreground mb-1 font-medium">{meta.label}</p>
+                            <p className={`text-2xl font-black font-mono mb-0.5 ${
+                                (stats?.accuracy_pct ?? 0) >= 55 ? "text-green-400" :
+                                (stats?.accuracy_pct ?? 0) >= 45 ? "text-foreground" : "text-red-400"
+                            }`}>
+                                {stats?.accuracy_pct != null ? `${stats.accuracy_pct}%` : "—"}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                                {stats?.correct ?? 0}/{stats?.evaluated ?? 0} correct
+                            </p>
+                            {trend?.accuracy_pct != null && (
+                                <p className="text-[10px] text-muted-foreground/70 mt-1">
+                                    Last 30d: <span className={`font-semibold ${
+                                        trend.accuracy_pct >= 55 ? "text-green-400" :
+                                        trend.accuracy_pct >= 45 ? "text-foreground" : "text-red-400"
+                                    }`}>{trend.accuracy_pct}%</span>
+                                </p>
+                            )}
+                        </div>
+                    )
+                })}
+            </div>
+
+            {/* Per-outcome accuracy table */}
+            {by_outcome?.length > 0 && (
+                <div className="overflow-x-auto">
+                    <p className="text-[10px] text-muted-foreground mb-2">Accuracy by actual outcome — reveals which engine handles Draws and Away Wins best.</p>
+                    <table className="w-full text-xs">
+                        <thead>
+                            <tr className="border-b border-border">
+                                <th className="py-2 text-muted-foreground font-medium text-left">Actual Outcome</th>
+                                {engines.map(e => (
+                                    <th key={e} className="py-2 text-muted-foreground font-medium text-right">
+                                        {ENGINE_META[e].label.split(" ")[0]}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {by_outcome.map((row: any, i: number) => (
+                                <tr key={i} className="border-b border-border/40 hover:bg-secondary/10">
+                                    <td className="py-2 font-medium text-foreground">{row.outcome}</td>
+                                    {engines.map(e => {
+                                        const s = row[e]
+                                        return (
+                                            <td key={e} className="py-2 text-right">
+                                                <EngineBar pct={s?.accuracy_pct ?? null} color={ENGINE_META[e].color} />
+                                            </td>
+                                        )
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            <p className="text-[10px] text-muted-foreground/60 mt-4">
+                ⚙️ DC and ML now auto-recalibrate after every sync that grades new results.
+                Retrain both models after syncing a full gameweek for best results.
+            </p>
+        </Section>
+    )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PerformancePage() {
@@ -161,6 +277,7 @@ export default function PerformancePage() {
     const [perLeague, setPerLeague] = useState<any>(null)
     const [confusion, setConfusion] = useState<any>(null)
     const [markets, setMarkets]     = useState<any>(null)
+    const [engines, setEngines]     = useState<any>(null)
     const [loading, setLoading]     = useState(true)
     const [error, setError]         = useState("")
 
@@ -210,10 +327,12 @@ export default function PerformancePage() {
             getPerLeague(),
             getConfusionMatrix(),
             getMarketAccuracy(),
+            getEnginePerformance().catch(() => null),
         ])
-            .then(([p, d, c, l, cm, mk]) => {
+            .then(([p, d, c, l, cm, mk, eng]) => {
                 setPerf(p); setDrift(d); setCal(c)
                 setPerLeague(l); setConfusion(cm); setMarkets(mk)
+                setEngines(eng)
             })
             .catch(e => setError(e.message || "Failed to load metrics."))
             .finally(() => setLoading(false))
@@ -365,6 +484,9 @@ export default function PerformancePage() {
                                 )}
                             </div>
                         )}
+
+                        {/* Engine Breakdown — NEW: per-engine accuracy */}
+                        <EngineBreakdownSection data={engines} />
 
                         {/* Rolling Drift */}
                         {drift?.drift?.length > 0 && (

@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer"
 import { getSquadStats, getLeagues } from "@/lib/api"
 import { SquadStat, League } from "@/lib/types"
 import { Users, ChevronRight, BarChart3, Filter } from "lucide-react"
+import { TeamLogo } from "@/components/team-logo"
 
 export default function SquadStatsPage() {
     const [squadStats, setSquadStats] = useState<SquadStat[]>([])
@@ -121,7 +122,12 @@ export default function SquadStatsPage() {
                                             key={i}
                                             className="border-b border-border/50 hover:bg-secondary/20 transition-colors"
                                         >
-                                            <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">{s.team}</td>
+                                            <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    <TeamLogo src={s.logo_url} alt={`${s.team} logo`} size={20} className="bg-white/5" />
+                                                    <span className="truncate">{s.team}</span>
+                                                </div>
+                                            </td>
                                             <td className="px-3 py-3 text-center">
                                                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${s.split === "for" ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"
                                                     }`}>

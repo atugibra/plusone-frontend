@@ -25,6 +25,7 @@ import {
   Zap,
 } from "lucide-react"
 import { BarChart, Bar, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
+import { TeamLogo } from "@/components/team-logo"
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://football-analytics-production-5b3d.up.railway.app"
 
@@ -213,9 +214,7 @@ export default function DashboardPage() {
                         href={homeId ? `/team/${homeId}` : "#"}
                         className="flex flex-col items-center gap-1 flex-1 hover:opacity-80 transition-opacity group"
                       >
-                        <div className="w-9 h-9 rounded-full overflow-hidden border border-border bg-card flex items-center justify-center relative shrink-0">
-                          <Image src={pick.home_logo ?? "/placeholder-logo.png"} alt={pick.home_team ?? ""} fill sizes="36px" className="object-contain p-0.5" />
-                        </div>
+                        <TeamLogo src={pick.home_logo} alt={`${pick.home_team} logo`} size={36} className="bg-white/5" />
                         <span className="text-xs font-semibold text-foreground text-center line-clamp-1 group-hover:text-primary transition-colors">{pick.home_team}</span>
                       </Link>
                       <div className="flex flex-col items-center gap-0.5 shrink-0">
@@ -225,9 +224,7 @@ export default function DashboardPage() {
                         href={awayId ? `/team/${awayId}` : "#"}
                         className="flex flex-col items-center gap-1 flex-1 hover:opacity-80 transition-opacity group"
                       >
-                        <div className="w-9 h-9 rounded-full overflow-hidden border border-border bg-card flex items-center justify-center relative shrink-0">
-                          <Image src={pick.away_logo ?? "/placeholder-logo.png"} alt={pick.away_team ?? ""} fill sizes="36px" className="object-contain p-0.5" />
-                        </div>
+                        <TeamLogo src={pick.away_logo} alt={`${pick.away_team} logo`} size={36} className="bg-white/5" />
                         <span className="text-xs font-semibold text-foreground text-center line-clamp-1 group-hover:text-primary transition-colors">{pick.away_team}</span>
                       </Link>
                     </div>
@@ -397,7 +394,10 @@ export default function DashboardPage() {
                     </span>
                     <div>
                       <p className="text-sm font-semibold text-foreground">{player.name || player.playerName}</p>
-                      <p className="text-[10px] text-muted-foreground">{player.team || player.team_id}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <TeamLogo src={player.logo_url} alt={`${player.team || player.team_id} logo`} size={12} className="bg-transparent" />
+                        <p className="text-[10px] text-muted-foreground">{player.team || player.team_id}</p>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -441,9 +441,7 @@ export default function DashboardPage() {
                       <span className={`text-sm font-medium ${(m.home_score ?? 0) >= (m.away_score ?? 0) ? "text-foreground" : "text-foreground/60"}`}>
                         {m.home_team}
                       </span>
-                      <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
-                         <Image src={m.home_logo || "/placeholder-logo.png"} alt={`${m.home_team} logo`} fill sizes="20px" className="object-contain p-0.5" />
-                      </div>
+                      <TeamLogo src={m.home_logo} alt={`${m.home_team} logo`} size={20} className="bg-white/5" />
                     </div>
                     
                     <span className="text-sm font-bold font-mono text-foreground shrink-0 text-center w-12">
@@ -451,9 +449,7 @@ export default function DashboardPage() {
                     </span>
                     
                     <div className="flex items-center gap-2 flex-1 justify-start">
-                      <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
-                         <Image src={m.away_logo || "/placeholder-logo.png"} alt={`${m.away_team} logo`} fill sizes="20px" className="object-contain p-0.5" />
-                      </div>
+                      <TeamLogo src={m.away_logo} alt={`${m.away_team} logo`} size={20} className="bg-white/5" />
                       <span className={`text-sm font-medium ${(m.away_score ?? 0) >= (m.home_score ?? 0) ? "text-foreground" : "text-foreground/60"}`}>
                         {m.away_team}
                       </span>
@@ -488,17 +484,13 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between mt-1.5 gap-2">
                     <div className="flex flex-1 items-center justify-end gap-2">
                       <span className="text-sm font-medium text-foreground text-right">{m.home_team || m.homeTeam}</span>
-                      <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
-                         <Image src={m.home_logo || "/placeholder-logo.png"} alt={`${m.home_team} logo`} fill sizes="20px" className="object-contain p-0.5" />
-                      </div>
+                      <TeamLogo src={m.home_logo} alt={`${m.home_team} logo`} size={20} className="bg-white/5" />
                     </div>
                     
                     <span className="text-xs text-muted-foreground shrink-0 text-center w-8">vs</span>
                     
                     <div className="flex flex-1 items-center justify-start gap-2">
-                      <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
-                         <Image src={m.away_logo || "/placeholder-logo.png"} alt={`${m.away_team} logo`} fill sizes="20px" className="object-contain p-0.5" />
-                      </div>
+                      <TeamLogo src={m.away_logo} alt={`${m.away_team} logo`} size={20} className="bg-white/5" />
                       <span className="text-sm font-medium text-foreground">{m.away_team || m.awayTeam}</span>
                     </div>
                   </div>

@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer"
 import { getStandings, getLeagues, getSeasons } from "@/lib/api"
 import { Standing, League, Season } from "@/lib/types"
 import { Filter, ChevronRight, Trophy } from "lucide-react"
+import { TeamLogo } from "@/components/team-logo"
 
 // The only league that shows previous seasons data
 const LEAGUES_WITH_HISTORY = ["2. bundesliga", "2. Bundesliga", "bundesliga 2", "2 bundesliga"]
@@ -219,19 +220,12 @@ function StandingsTable({ rows, highlight = false }: { rows: any[]; highlight?: 
                                 <td className="px-3 py-3 text-center font-mono text-muted-foreground">{r.rank ?? i + 1}</td>
                                 <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                                     <div className="flex items-center gap-2">
-                                        {r.logo_url ? (
-                                            <div className="relative h-5 w-5 rounded-full overflow-hidden bg-white/10 flex-shrink-0">
-                                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                <img 
-                                                    src={r.logo_url} 
-                                                    alt={`${r.team} logo`} 
-                                                    className="object-contain absolute inset-0 w-full h-full p-0.5"
-                                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div className="h-5 w-5 rounded-full bg-secondary flex-shrink-0" />
-                                        )}
+                                        <TeamLogo 
+                                          src={r.logo_url} 
+                                          alt={`${r.team} logo`} 
+                                          size={20} 
+                                          className="bg-white/5" 
+                                        />
                                         <span className="truncate">{r.team}</span>
                                     </div>
                                 </td>
