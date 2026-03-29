@@ -592,30 +592,62 @@ export default function PerformancePage() {
                                     <table className="w-full text-xs">
                                         <thead>
                                             <tr className="border-b border-border">
-                                                {["League", "Predictions", "Evaluated", "Accuracy", "Brier", "RPS"].map(h => (
+                                                {["League", "Confidence", "Predictions", "Evaluated", "Accuracy", "Brier", "RPS"].map(h => (
                                                     <th key={h} className="py-2 text-muted-foreground font-medium text-right first:text-left">{h}</th>
                                                 ))}
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {perLeague.leagues.map((row: any, i: number) => (
-                                                <tr key={i} className="border-b border-border/40 hover:bg-secondary/10">
-                                                    <td className="py-2 text-foreground">{row.league}</td>
-                                                    <td className="py-2 text-right font-mono">{row.matches}</td>
-                                                    <td className="py-2 text-right font-mono text-muted-foreground">{row.evaluated}</td>
-                                                    <td className={`py-2 text-right font-mono font-bold ${
-                                                        row.accuracy == null ? "text-muted-foreground" :
-                                                        row.accuracy >= 55 ? "text-success" :
-                                                        row.accuracy < 40 ? "text-destructive" : "text-foreground"
-                                                    }`}>
-                                                        {row.accuracy != null ? `${row.accuracy}%` : "—"}
-                                                    </td>
-                                                    <td className={`py-2 text-right font-mono ${row.brier != null && row.brier < 0.45 ? "text-success" : "text-foreground"}`}>
-                                                        {row.brier ?? "—"}
-                                                    </td>
-                                                    <td className="py-2 text-right font-mono text-muted-foreground">{row.rps ?? "—"}</td>
-                                                </tr>
-                                            ))}
+                                            {perLeague.leagues.map((row: any, i: number) => {
+                                                const tierColors: Record<string, string> = {
+                                                    reliable:   "oklch(0.65 0.19 145)",   // green
+                                                    learning:   "oklch(0.75 0.18 65)",    // yellow
+                                                    unreliable: "oklch(0.55 0.2 27)",     // red
+                                                    new:        "oklch(0.5 0.01 260)",    // grey
+                                                }
+                                                const tierBg: Record<string, string> = {
+                                                    reliable:   "oklch(0.65 0.19 145 / 0.12)",
+                                                    learning:   "oklch(0.75 0.18 65  / 0.12)",
+                                                    unreliable: "oklch(0.55 0.2  27  / 0.12)",
+                                                    new:        "oklch(0.5  0.01 260 / 0.10)",
+                                                }
+                                                const tierIcon: Record<string, string> = {
+                                                    reliable: "🟢", learning: "🟡",
+                                                    unreliable: "🔴", new: "⬜",
+                                                }
+                                                const tier = row.confidence_tier || "new"
+                                                return (
+                                                    <tr key={i} className="border-b border-border/40 hover:bg-secondary/10">
+                                                        <td className="py-2 text-foreground">{row.league}</td>
+                                                        <td className="py-2 text-right">
+                                                            <span style={{
+                                                                color: tierColors[tier],
+                                                                background: tierBg[tier],
+                                                                borderRadius: "9999px",
+                                                                padding: "2px 8px",
+                                                                fontSize: "10px",
+                                                                fontWeight: 600,
+                                                                whiteSpace: "nowrap",
+                                                            }}>
+                                                                {tierIcon[tier]} {row.tier_label || "Insufficient Data"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-2 text-right font-mono">{row.matches}</td>
+                                                        <td className="py-2 text-right font-mono text-muted-foreground">{row.evaluated}</td>
+                                                        <td className={`py-2 text-right font-mono font-bold ${
+                                                            row.accuracy == null ? "text-muted-foreground" :
+                                                            row.accuracy >= 55 ? "text-success" :
+                                                            row.accuracy < 40 ? "text-destructive" : "text-foreground"
+                                                        }`}>
+                                                            {row.accuracy != null ? `${row.accuracy}%` : "—"}
+                                                        </td>
+                                                        <td className={`py-2 text-right font-mono ${row.brier != null && row.brier < 0.45 ? "text-success" : "text-foreground"}`}>
+                                                            {row.brier ?? "—"}
+                                                        </td>
+                                                        <td className="py-2 text-right font-mono text-muted-foreground">{row.rps ?? "—"}</td>
+                                                    </tr>
+                                                )
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>

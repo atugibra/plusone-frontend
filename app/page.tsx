@@ -83,20 +83,44 @@ export default function DashboardPage() {
   }, [])
 
   // Fetch high-confidence verified picks (public, no auth needed)
+  // Draw picks are dynamically suppressed until the system's Draw accuracy
+  // crosses 30% — no hardcoding, they auto-reappear when models improve.
   useEffect(() => {
-    fetch(`${API}/api/predictions/feed?limit=6`)
-      .then(async (res) => {
-        if (!res.ok) return
-        const data = await res.json()
-        const arr = Array.isArray(data) ? data : (data.predictions ?? data.results ?? [])
-        // Filter: confidence >= 0.80 (model very sure), upcoming matches only
-        const highConf = arr.filter((p: any) => {
-          const conf = p.confidence ?? p.probability ?? 0
-          return conf >= 0.80
-        }).slice(0, 6)
+    // Parallel: fetch predictions + current per-outcome accuracy
+    Promise.all([
+      fetch(`${API}/api/predictions/feed?limit=6`)
+        .then(async (res) => {
+          if (!res.ok) return []
+          const data = await res.json()
+          return Array.isArray(data) ? data : (data.predictions ?? data.results ?? [])
+        })
+        .catch(() => []),
+      fetch(`${API}/api/performance/engines`)
+        .then(async (res) => {
+          if (!res.ok) return null
+          return res.json()
+        })
+        .catch(() => null),
+    ])
+      .then(([arr, enginesData]) => {
+        // Determine current Draw accuracy from per-outcome engine stats
+        // If we can't get it (no data yet), be conservative and suppress Draws
+        const drawAccuracy: number = enginesData?.per_outcome?.Draw?.accuracy ?? 0
+        const drawReliable = drawAccuracy >= 30  // auto-unlocks when models improve
+
+        const highConf = arr
+          .filter((p: any) => {
+            const conf = p.confidence ?? p.probability ?? 0
+            if (conf < 0.80) return false
+            // Suppress Draw picks unless the model has proven reliable on Draws
+            const outcome = p.predicted_outcome ?? ""
+            if (outcome === "Draw" && !drawReliable) return false
+            return true
+          })
+          .slice(0, 6)
+
         setFreePicks(highConf)
       })
-      .catch(() => {})
       .finally(() => setPicksLoading(false))
   }, [])
 
