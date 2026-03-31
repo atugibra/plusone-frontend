@@ -34,6 +34,7 @@ import {
   CheckCircle2,
   Circle,
   SplitSquareHorizontal,
+  Search,
 } from "lucide-react"
 import {
   XAxis,
@@ -83,7 +84,13 @@ export default function PredictionsPage() {
   const [consensusResult, setConsensusResult] = useState<Record<string, any> | null>(null)
   const [predictingConsensus, setPredictingConsensus] = useState<number | null>(null)
   const [consensusLeague, setConsensusLeague] = useState("")
-
+  const [consensusSearch, setConsensusSearch] = useState("")
+  // Custom match consensus (for matches not in the 30-fixture list)
+  const [customHome, setCustomHome] = useState("")
+  const [customAway, setCustomAway] = useState("")
+  const [customLeague, setCustomLeague] = useState("")
+  const [customConsensusLoading, setCustomConsensusLoading] = useState(false)
+  const [showCustomForm, setShowCustomForm] = useState(false)
 
   // Polling ref so we can cancel it on unmount
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -103,7 +110,7 @@ export default function PredictionsPage() {
       .then((s: any) => setEngineStatus(s))
       .catch(() => setEngineStatus(null))
       .finally(() => setEngineLoading(false))
-    getPredictionFixtures({ limit: 30 })
+    getPredictionFixtures({ limit: 100 })
       .then((r: any) => setFixtures(Array.isArray(r?.fixtures) ? r.fixtures : []))
       .catch(() => setFixtures([]))
       .finally(() => setFixturesLoading(false))
@@ -266,9 +273,28 @@ export default function PredictionsPage() {
     ? fixtures.filter((f: any) => String(f.league_id) === fixtureLeague)
     : fixtures
 
-  const consensusFixtures = consensusLeague
-    ? fixtures.filter((f: any) => String(f.league_id) === consensusLeague)
-    : fixtures
+  // Name-quality guard (mirrors Markets page)
+  const isCleanTeam = (t: any) => t.name && /^[A-Z0-9]/.test(t.name) && !t.name.includes(" vs ")
+
+  // Fixture list filtered by league + text search
+  const consensusFixtures = (() => {
+    let list = consensusLeague
+      ? fixtures.filter((f: any) => String(f.league_id) === consensusLeague)
+      : fixtures
+    if (consensusSearch.trim()) {
+      const q = consensusSearch.toLowerCase()
+      list = list.filter((f: any) =>
+        f.home_team?.toLowerCase().includes(q) || f.away_team?.toLowerCase().includes(q)
+      )
+    }
+    return list
+  })()
+
+  // Teams for the custom match form
+  const customConsensusTeams = teams
+    .filter(isCleanTeam)
+    .filter((t: any) => !customLeague || String(t.league_id) === customLeague)
+    .sort((a: any, b: any) => a.name.localeCompare(b.name))
 
   const handleConsensusPredict = async (fixture: any) => {
     setPredictingConsensus(fixture.id)
@@ -294,6 +320,53 @@ export default function PredictionsPage() {
       }
     }
     setPredictingConsensus(null)
+  }
+
+  // ── Custom match consensus (team picker, not fixture-based) ───────────────
+  const handleCustomConsensus = async () => {
+    if (!customHome || !customAway) return
+    const homeTeam = teams.find((t: any) => String(t.id) === customHome)
+    const awayTeam = teams.find((t: any) => String(t.id) === customAway)
+    if (!homeTeam || !awayTeam) return
+    const leagueId = homeTeam.league_id
+    // Derive season from fixtures in the same league, or fall back to first available
+    const seasonId =
+      fixtures.find((f: any) => f.league_id === leagueId)?.season_id ??
+      fixtures[0]?.season_id ?? 1
+    const fakeFx = {
+      id: -1,
+      home_team:    homeTeam.name,
+      away_team:    awayTeam.name,
+      home_team_id: homeTeam.id,
+      away_team_id: awayTeam.id,
+      league_id:    leagueId,
+      season_id:    seasonId,
+      home_logo:    homeTeam.logo_url,
+      away_logo:    awayTeam.logo_url,
+      match_date:   null,
+      league:       leagues.find((l: any) => l.id === leagueId)?.name ?? "",
+    }
+    setCustomConsensusLoading(true)
+    setConsensusFixture(fakeFx)
+    setConsensusResult(null)
+    try {
+      const data = await predictConsensus({
+        home_team_id: homeTeam.id,
+        away_team_id: awayTeam.id,
+        league_id:    leagueId,
+        season_id:    seasonId,
+      })
+      setConsensusResult(data)
+    } catch (err: any) {
+      const msg = err?.message || ""
+      if (msg.includes("503"))
+        setConsensusResult({ error: "Backend unavailable (503). Try again in ~30 seconds." })
+      else if (msg.includes("422"))
+        setConsensusResult({ error: "ML engine not trained yet. Train the engine first, then retry." })
+      else
+        setConsensusResult({ error: msg || "Consensus prediction failed. Check backend logs." })
+    }
+    setCustomConsensusLoading(false)
   }
 
   const filteredTeams = selectedLeague
@@ -921,18 +994,32 @@ export default function PredictionsPage() {
 
           {/* Fixture Picker */}
           <div className="px-6 py-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
               <h3 className="text-sm font-semibold text-foreground">Select Fixture — Consensus Predict</h3>
-              <select
-                value={consensusLeague}
-                onChange={(e: any) => setConsensusLeague(e.target.value)}
-                className="appearance-none rounded-lg border border-border bg-secondary/30 px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-w-[160px]"
-              >
-                <option value="">All Leagues</option>
-                {leagues.map((l: any) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                {/* League filter */}
+                <select
+                  value={consensusLeague}
+                  onChange={(e: any) => setConsensusLeague(e.target.value)}
+                  className="appearance-none rounded-lg border border-border bg-secondary/30 px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-w-[140px]"
+                >
+                  <option value="">All Leagues</option>
+                  {leagues.map((l: any) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+                {/* Text search */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search team…"
+                    value={consensusSearch}
+                    onChange={(e: any) => setConsensusSearch(e.target.value)}
+                    className="pl-7 pr-3 py-1.5 rounded-lg border border-border bg-secondary/30 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-36"
+                  />
+                </div>
+              </div>
             </div>
 
             {fixturesLoading ? (
@@ -995,9 +1082,80 @@ export default function PredictionsPage() {
                 ))}
               </div>
             )}
+
+            {/* ── Can't find it? Custom match search ─────────────────────── */}
+            <div className="mt-4 rounded-lg border border-dashed border-border bg-secondary/10">
+              <button
+                onClick={() => setShowCustomForm((v: boolean) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <Search className="h-3.5 w-3.5" />
+                  Can't find the match? Search by team
+                </span>
+                <span>{showCustomForm ? "▲" : "▼"}</span>
+              </button>
+              {showCustomForm && (
+                <div className="px-4 pb-4 space-y-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">League (optional)</label>
+                    <select
+                      value={customLeague}
+                      onChange={(e: any) => { setCustomLeague(e.target.value); setCustomHome(""); setCustomAway("") }}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="">All Leagues</option>
+                      {leagues.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 items-end">
+                    <div className="flex-1">
+                      <label className="text-xs text-muted-foreground mb-1 block">Home Team</label>
+                      <select
+                        value={customHome}
+                        onChange={(e: any) => setCustomHome(e.target.value)}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="">Select home team…</option>
+                        {customConsensusTeams.map((t: any) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <span className="pb-2 text-xs font-bold text-muted-foreground">VS</span>
+                    <div className="flex-1">
+                      <label className="text-xs text-muted-foreground mb-1 block">Away Team</label>
+                      <select
+                        value={customAway}
+                        onChange={(e: any) => setCustomAway(e.target.value)}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="">Select away team…</option>
+                        {customConsensusTeams
+                          .filter((t: any) => String(t.id) !== customHome)
+                          .map((t: any) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                      </select>
+                    </div>
+                    <button
+                      onClick={handleCustomConsensus}
+                      disabled={!customHome || !customAway || customConsensusLoading}
+                      className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {customConsensusLoading ? (
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <GitMerge className="h-3 w-3" />
+                      )}
+                      {customConsensusLoading ? "Analysing…" : "Run Consensus"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Result Panel */}
           {consensusResult && consensusFixture && (
             <div className="border-t border-border px-6 py-5 bg-secondary/10">
               {consensusResult.error ? (

@@ -83,19 +83,17 @@ export default function MarketsPage() {
         getDCStatus().then(s => setDcStatus(s)).catch(() => null).finally(() => setDcLoading(false))
         getEnrichmentStatus().then(s => setEnrichStatus(s)).catch(() => null)
         getLeagues().then(d => setLeagues(Array.isArray(d) ? d : []))
-        getTeams({ limit: 2000 }).then(d => setTeams(Array.isArray(d) ? d : []))
+        getTeams().then(d => setTeams(Array.isArray(d) ? d : []))
     }, [])
 
-    // When league changes, re-fetch teams filtered server-side for accuracy
-    useEffect(() => {
-        if (!selectedLeague) {
-            getTeams({ limit: 2000 }).then(d => setTeams(Array.isArray(d) ? d : []))
-        } else {
-            getTeams({ league_id: selectedLeague, limit: 2000 }).then(d => setTeams(Array.isArray(d) ? d : []))
-        }
-    }, [selectedLeague])
+    // Clean team names: exclude ClubElo artifacts ("eng Arsenal", "ee FC Flora", "eng vs Chelsea")
+    // Pattern: names starting with lowercase (country code prefix) or containing " vs "
+    const isCleanTeam = (t: any) => t.name && /^[A-Z0-9]/.test(t.name) && !t.name.includes(" vs ")
 
     const filteredTeams = teams
+        .filter(isCleanTeam)
+        .filter((t: any) => !selectedLeague || String(t.league_id) === selectedLeague)
+        .sort((a: any, b: any) => a.name.localeCompare(b.name))
 
     const handleTrain = async () => {
         setTraining(true); setTrainMsg("Starting training…")

@@ -20,19 +20,16 @@ export default function HeadToHeadPage() {
 
     useEffect(() => {
         getLeagues().then((res) => setLeagues(Array.isArray(res) ? res : [])).catch(() => setLeagues([]))
-        getTeams({ limit: 2000 }).then((res) => setTeams(res || [])).catch(() => setTeams([]))
+        getTeams().then((res) => setTeams(res || [])).catch(() => setTeams([]))
     }, [])
 
-    // Re-fetch teams server-side when league changes
-    useEffect(() => {
-        setTeamA("")
-        setTeamB("")
-        if (!selectedLeague) {
-            getTeams({ limit: 2000 }).then((res) => setTeams(res || [])).catch(() => setTeams([]))
-        } else {
-            getTeams({ league_id: selectedLeague, limit: 2000 }).then((res) => setTeams(res || [])).catch(() => setTeams([]))
-        }
-    }, [selectedLeague])
+    // Clean team names: exclude ClubElo artifacts ("eng Arsenal", "ee FC Flora", "eng vs Chelsea")
+    const isCleanTeam = (t: any) => t.name && /^[A-Z0-9]/.test(t.name) && !t.name.includes(" vs ")
+
+    const filteredTeams = teams
+        .filter(isCleanTeam)
+        .filter((t: any) => !selectedLeague || String(t.league_id) === selectedLeague)
+        .sort((a: any, b: any) => a.name.localeCompare(b.name))
 
     const handleSearch = async () => {
         if (!teamA || !teamB) return
@@ -86,7 +83,7 @@ export default function HeadToHeadPage() {
                         <label className="text-xs font-semibold text-muted-foreground mb-2 block uppercase tracking-wider">Filter by League</label>
                         <select
                             value={selectedLeague}
-                            onChange={(e) => setSelectedLeague(e.target.value)}
+                            onChange={(e) => { setSelectedLeague(e.target.value); setTeamA(""); setTeamB("") }}
                             className="w-full sm:w-64 appearance-none rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             <option value="">All Leagues</option>
