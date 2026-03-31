@@ -83,10 +83,19 @@ export default function MarketsPage() {
         getDCStatus().then(s => setDcStatus(s)).catch(() => null).finally(() => setDcLoading(false))
         getEnrichmentStatus().then(s => setEnrichStatus(s)).catch(() => null)
         getLeagues().then(d => setLeagues(Array.isArray(d) ? d : []))
-        getTeams({ limit: 1000 }).then(d => setTeams(Array.isArray(d) ? d : []))
+        getTeams({ limit: 2000 }).then(d => setTeams(Array.isArray(d) ? d : []))
     }, [])
 
-    const filteredTeams = selectedLeague ? teams.filter((t: any) => String(t.league_id) === selectedLeague) : teams
+    // When league changes, re-fetch teams filtered server-side for accuracy
+    useEffect(() => {
+        if (!selectedLeague) {
+            getTeams({ limit: 2000 }).then(d => setTeams(Array.isArray(d) ? d : []))
+        } else {
+            getTeams({ league_id: selectedLeague, limit: 2000 }).then(d => setTeams(Array.isArray(d) ? d : []))
+        }
+    }, [selectedLeague])
+
+    const filteredTeams = teams
 
     const handleTrain = async () => {
         setTraining(true); setTrainMsg("Starting training…")

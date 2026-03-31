@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { getTeams, getH2H } from "@/lib/api"
+import { getTeams, getH2H, getLeagues } from "@/lib/api"
 import { Match } from "@/lib/types"
 import { Swords, Search } from "lucide-react"
 import { TeamLogo } from "@/components/team-logo"
 
 export default function HeadToHeadPage() {
+    const [leagues, setLeagues] = useState<any[]>([])
+    const [selectedLeague, setSelectedLeague] = useState("")
     const [teams, setTeams] = useState<Record<string, any>[]>([])
     const [teamA, setTeamA] = useState("")
     const [teamB, setTeamB] = useState("")
@@ -17,8 +19,20 @@ export default function HeadToHeadPage() {
     const [loading, setLoading] = useState(false)
 
     useEffect(() => {
-        getTeams({ limit: 1000 }).then((res) => setTeams(res || [])).catch(() => setTeams([]))
+        getLeagues().then((res) => setLeagues(Array.isArray(res) ? res : [])).catch(() => setLeagues([]))
+        getTeams({ limit: 2000 }).then((res) => setTeams(res || [])).catch(() => setTeams([]))
     }, [])
+
+    // Re-fetch teams server-side when league changes
+    useEffect(() => {
+        setTeamA("")
+        setTeamB("")
+        if (!selectedLeague) {
+            getTeams({ limit: 2000 }).then((res) => setTeams(res || [])).catch(() => setTeams([]))
+        } else {
+            getTeams({ league_id: selectedLeague, limit: 2000 }).then((res) => setTeams(res || [])).catch(() => setTeams([]))
+        }
+    }, [selectedLeague])
 
     const handleSearch = async () => {
         if (!teamA || !teamB) return
@@ -67,6 +81,18 @@ export default function HeadToHeadPage() {
 
                 {/* Selection Card */}
                 <div className="rounded-lg border border-border bg-card p-6 mb-8">
+                    {/* League filter row */}
+                    <div className="mb-5">
+                        <label className="text-xs font-semibold text-muted-foreground mb-2 block uppercase tracking-wider">Filter by League</label>
+                        <select
+                            value={selectedLeague}
+                            onChange={(e) => setSelectedLeague(e.target.value)}
+                            className="w-full sm:w-64 appearance-none rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                            <option value="">All Leagues</option>
+                            {leagues.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                        </select>
+                    </div>
                     <div className="flex flex-col md:flex-row gap-6 items-center justify-center">
                         <div className="w-full md:w-1/3">
                             <label className="text-xs font-semibold text-muted-foreground mb-2 block uppercase tracking-wider">
