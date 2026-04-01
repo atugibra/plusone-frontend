@@ -3,25 +3,14 @@
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { getPerformance, getPerformanceDrift, getCalibration, getPerLeague, getConfusionMatrix, evaluatePredictions, recalibrate, getEnginePerformance } from "@/lib/api"
-import { BarChart3, TrendingUp, Target, CheckCircle2, AlertCircle, RefreshCw, Zap, Cpu } from "lucide-react"
+import { getPerformance, getPerformanceDrift, getCalibration, getPerLeague, getConfusionMatrix, evaluatePredictions, recalibrate, getEnginePerformance, getPerformanceMarkets } from "@/lib/api"
+import { BarChart3, TrendingUp, Target, CheckCircle2, AlertCircle, RefreshCw, Zap, Cpu, Trophy, ChevronDown } from "lucide-react"
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell
 } from "recharts"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async function getMarketAccuracy() {
-    try {
-        const base = process.env.NEXT_PUBLIC_API_URL || ""
-        const res = await fetch(`${base}/api/performance/markets`)
-        if (!res.ok) return null
-        return res.json()
-    } catch {
-        return null
-    }
-}
 
 function StatCard({ icon: Icon, label, value, sub, good }: {
     icon: React.ElementType; label: string; value: string; sub: string; good?: boolean
@@ -49,108 +38,149 @@ function Section({ title, sub, children }: { title: string; sub?: string; childr
     )
 }
 
-// ─── Market Accuracy Section ──────────────────────────────────────────────────
+// ─── Full Market Performance Section ──────────────────────────────────────────────────
+
+const MKT_ENGINES = ["consensus", "dc", "ml", "legacy"] as const
+const ENGINE_COLORS: Record<string, string> = {
+    consensus: "#22c55e", dc: "#3b82f6", ml: "#8b5cf6", legacy: "#f59e0b",
+}
+
+function MiniBar({ pct, engine }: { pct: number | null; engine: string }) {
+    if (pct == null) return <span className="text-xs text-muted-foreground/50 font-mono">—</span>
+    const color = ENGINE_COLORS[engine] || "#6b7280"
+    return (
+        <div className="flex items-center gap-1.5 w-full">
+            <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
+                <div className="h-full rounded-full"
+                    style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: color }} />
+            </div>
+            <span className={`text-[10px] font-mono w-8 text-right ${
+                pct >= 60 ? "text-green-400" : pct >= 45 ? "text-yellow-400" : "text-red-400"
+            }`}>{pct}%</span>
+        </div>
+    )
+}
 
 function MarketAccuracySection({ data }: { data: any }) {
+    const [expanded, setExpanded] = useState<string | null>(null)
     if (!data) return null
-    const { overall, by_league } = data
+    const { markets, league_rankings, summary, total_graded, legacy_data } = data
+    const mktEntries = Object.entries(markets || {}) as [string, any][]
 
-    const hasBtts   = overall?.btts?.total > 0
-    const hasOver25 = overall?.over_2_5?.total > 0
-
-    if (!hasBtts && !hasOver25) {
+    if (mktEntries.length === 0) {
         return (
-            <Section title="Market Accuracy — BTTS & Over 2.5" sub="Graded after matches complete via Evaluate Predictions">
+            <Section title="Market Performance" sub="Full per-market accuracy from all 3 engines">
                 <p className="text-xs text-muted-foreground">No market predictions graded yet. Run Evaluate Predictions after matches complete.</p>
             </Section>
         )
     }
 
     return (
-        <Section title="Market Accuracy — BTTS & Over 2.5" sub="How accurate are the market predictions? Graded after match results recorded.">
-            <div className="grid grid-cols-2 gap-3 mb-5">
-                {hasBtts && (
-                    <div className="rounded-lg border border-border bg-secondary/10 p-4">
-                        <p className="text-xs text-muted-foreground mb-1">Both Teams to Score</p>
-                        <p className={`text-2xl font-bold font-mono ${
-                            (overall.btts.accuracy_pct ?? 0) >= 60 ? "text-success" :
-                            (overall.btts.accuracy_pct ?? 0) >= 45 ? "text-foreground" : "text-destructive"
-                        }`}>
-                            {overall.btts.accuracy_pct != null ? `${overall.btts.accuracy_pct}%` : "—"}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                            {overall.btts.correct}/{overall.btts.total} correct
-                        </p>
-                    </div>
-                )}
-                {hasOver25 && (
-                    <div className="rounded-lg border border-border bg-secondary/10 p-4">
-                        <p className="text-xs text-muted-foreground mb-1">Over 2.5 Goals</p>
-                        <p className={`text-2xl font-bold font-mono ${
-                            (overall.over_2_5.accuracy_pct ?? 0) >= 60 ? "text-success" :
-                            (overall.over_2_5.accuracy_pct ?? 0) >= 45 ? "text-foreground" : "text-destructive"
-                        }`}>
-                            {overall.over_2_5.accuracy_pct != null ? `${overall.over_2_5.accuracy_pct}%` : "—"}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                            {overall.over_2_5.correct}/{overall.over_2_5.total} correct
-                        </p>
-                    </div>
-                )}
-            </div>
-
-            {(overall.avg_home_xg > 0 || overall.avg_away_xg > 0) && (
-                <div className="flex gap-4 text-xs text-muted-foreground mb-5">
-                    <span>Avg Home xG: <strong className="text-foreground">{overall.avg_home_xg}</strong></span>
-                    <span>Avg Away xG: <strong className="text-foreground">{overall.avg_away_xg}</strong></span>
+        <Section
+            title="Market Performance"
+            sub={`${total_graded > 0 ? `${total_graded} graded predictions` : 'Legacy data'} · DC, ML & Legacy tracked per market`}
+        >
+            {/* Summary pills */}
+            {(summary?.best_markets?.length > 0 || summary?.worst_markets?.length > 0) && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                    {summary.best_markets?.map((m: any) => (
+                        <span key={m.market}
+                            className="inline-flex items-center gap-1 rounded-full bg-green-500/10 border border-green-500/20 px-2.5 py-1 text-[10px] font-semibold text-green-400">
+                            <Trophy className="h-2.5 w-2.5" /> {m.label}{m.accuracy_pct != null ? ` · ${m.accuracy_pct}%` : ""}
+                        </span>
+                    ))}
+                    {summary.worst_markets?.filter((m: any) => m.accuracy_pct != null && m.accuracy_pct < 45).map((m: any) => (
+                        <span key={`w-${m.market}`}
+                            className="inline-flex items-center gap-1 rounded-full bg-red-500/10 border border-red-500/20 px-2.5 py-1 text-[10px] font-semibold text-red-400">
+                            ↓ {m.label} {m.accuracy_pct}%
+                        </span>
+                    ))}
                 </div>
             )}
 
-            {by_league?.length > 0 && (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead>
-                            <tr className="border-b border-border">
-                                <th className="py-2 text-muted-foreground font-medium text-left">League</th>
-                                <th className="py-2 text-muted-foreground font-medium text-right">BTTS Acc</th>
-                                <th className="py-2 text-muted-foreground font-medium text-right">BTTS n</th>
-                                <th className="py-2 text-muted-foreground font-medium text-right">O2.5 Acc</th>
-                                <th className="py-2 text-muted-foreground font-medium text-right">O2.5 n</th>
-                                <th className="py-2 text-muted-foreground font-medium text-right">Avg xG</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {by_league.map((row: any, i: number) => (
-                                <tr key={i} className="border-b border-border/40 hover:bg-secondary/10">
-                                    <td className="py-2 font-medium text-foreground">{row.league}</td>
-                                    <td className={`py-2 text-right font-mono font-bold ${
-                                        row.btts_accuracy >= 60 ? "text-success" :
-                                        row.btts_accuracy >= 45 ? "text-foreground" :
-                                        row.btts_accuracy != null ? "text-destructive" : "text-muted-foreground"
-                                    }`}>
-                                        {row.btts_accuracy != null ? `${row.btts_accuracy}%` : "—"}
+            {/* Markets table */}
+            <div className="overflow-x-auto mb-4">
+                <table className="w-full text-xs">
+                    <thead>
+                        <tr className="border-b border-border">
+                            <th className="py-2 text-muted-foreground font-medium text-left">Market</th>
+                            <th className="py-2 text-muted-foreground font-medium text-center">n</th>
+                            <th className="py-2 text-muted-foreground font-medium text-center w-28">Best Engine</th>
+                            {MKT_ENGINES.map(e => (
+                                <th key={e} className="py-2 text-muted-foreground font-medium text-center capitalize w-24">{e}</th>
+                            ))}
+                            <th className="py-2 w-5" />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {mktEntries.map(([key, mkt]) => (
+                            <>
+                                <tr
+                                    key={key}
+                                    className="border-b border-border/30 hover:bg-secondary/10 cursor-pointer"
+                                    onClick={() => setExpanded(expanded === key ? null : key)}
+                                >
+                                    <td className="py-2 font-medium text-foreground">{mkt.label}</td>
+                                    <td className="py-2 text-center font-mono text-muted-foreground">{mkt.total}</td>
+                                    <td className="py-2 text-center">
+                                        <span
+                                            className="inline-block rounded-full px-2 py-0.5 text-[10px] font-bold capitalize"
+                                            style={{
+                                                backgroundColor: `${ENGINE_COLORS[mkt.best_engine] || "#6b7280"}22`,
+                                                color: ENGINE_COLORS[mkt.best_engine] || "#6b7280",
+                                            }}
+                                        >
+                                            {mkt.best_engine} {mkt.best_accuracy != null ? `${mkt.best_accuracy}%` : ""}
+                                        </span>
                                     </td>
-                                    <td className="py-2 text-right font-mono text-muted-foreground">{row.btts_total}</td>
-                                    <td className={`py-2 text-right font-mono font-bold ${
-                                        row.over25_accuracy >= 60 ? "text-success" :
-                                        row.over25_accuracy >= 45 ? "text-foreground" :
-                                        row.over25_accuracy != null ? "text-destructive" : "text-muted-foreground"
-                                    }`}>
-                                        {row.over25_accuracy != null ? `${row.over25_accuracy}%` : "—"}
-                                    </td>
-                                    <td className="py-2 text-right font-mono text-muted-foreground">{row.over25_total}</td>
-                                    <td className="py-2 text-right font-mono text-muted-foreground">
-                                        {row.avg_home_xg}/{row.avg_away_xg}
+                                    {MKT_ENGINES.map(eng => (
+                                        <td key={eng} className="py-2 px-2">
+                                            <MiniBar pct={mkt[eng]?.accuracy_pct ?? null} engine={eng} />
+                                        </td>
+                                    ))}
+                                    <td className="py-2 text-muted-foreground">
+                                        <ChevronDown className={`h-3 w-3 transition-transform ${expanded === key ? 'rotate-180' : ''}`} />
                                     </td>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                {expanded === key && (league_rankings?.[key]?.length ?? 0) > 0 && (
+                                    <tr key={`${key}-lg`}>
+                                        <td colSpan={6 + MKT_ENGINES.length} className="px-4 py-3 bg-secondary/5">
+                                            <p className="text-[10px] font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                                                Top Leagues — {mkt.label}
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {league_rankings[key].slice(0, 6).map((lr: any) => (
+                                                    <span key={lr.league} className={`rounded-lg border px-2.5 py-1 text-[10px] ${
+                                                        lr.tier === 'reliable'   ? 'border-green-500/30 bg-green-500/5 text-green-400' :
+                                                        lr.tier === 'learning'   ? 'border-yellow-500/30 bg-yellow-500/5 text-yellow-400' :
+                                                                                   'border-red-500/30 bg-red-500/5 text-red-400'
+                                                    }`}>
+                                                        <span className="font-semibold">{lr.league}</span>
+                                                        <span className="text-muted-foreground ml-1">
+                                                            {lr.accuracy_pct != null ? `${lr.accuracy_pct}%` : '—'} ({lr.n})
+                                                        </span>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {legacy_data && (
+                <p className="text-[10px] text-muted-foreground/60 mt-1">
+                    Showing legacy BTTS/O2.5 data. Full breakdown available once prediction_markets_log is populated.
+                </p>
             )}
         </Section>
     )
 }
+
+
 
 // ─── Engine Breakdown Section ─────────────────────────────────────────────────
 
@@ -326,7 +356,7 @@ export default function PerformancePage() {
             getCalibration(),
             getPerLeague(),
             getConfusionMatrix(),
-            getMarketAccuracy(),
+            getPerformanceMarkets().catch(() => null),
             getEnginePerformance().catch(() => null),
         ])
             .then(([p, d, c, l, cm, mk, eng]) => {
@@ -485,10 +515,15 @@ export default function PerformancePage() {
                             </div>
                         )}
 
+
                         {/* Engine Breakdown — NEW: per-engine accuracy */}
                         <EngineBreakdownSection data={engines} />
 
+                        {/* Market Performance — Full per-market, per-engine breakdown */}
+                        <MarketAccuracySection data={markets} />
+
                         {/* Rolling Drift */}
+
                         {drift?.drift?.length > 0 && (
                             <Section title="Rolling Performance Drift" sub={`${drift.window}-match rolling Brier score and accuracy over time`}>
                                 <div className="h-[220px] w-full">

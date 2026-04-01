@@ -95,7 +95,8 @@ export const getPerformanceDrift = () => req('/api/performance/drift');
 export const getCalibration = () => req('/api/performance/calibration');
 export const getPerLeague = () => req('/api/performance/per-league');
 export const getConfusionMatrix = () => req('/api/performance/confusion');
-export const getEnginePerformance = () => req('/api/performance/engines');
+export const getEnginePerformance   = () => req('/api/performance/engines');
+export const getPerformanceMarkets  = () => req('/api/performance/markets');
 // Grade all completed predictions against actual match results (requires admin auth)
 export const evaluatePredictions = () =>
     authReq('/api/prediction-log/evaluate', { method: 'POST' });
@@ -126,6 +127,4 @@ export const putSetting  = (key: string, value: string, description?: string) =>
 export const getAutoConsensusStatus = () => req('/api/predictions/auto-consensus/status');
 export const triggerAutoConsensus   = () =>
     authReq('/api/predictions/auto-consensus', { method: 'POST' });
-
-
 
