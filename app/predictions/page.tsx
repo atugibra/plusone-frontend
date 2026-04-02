@@ -13,6 +13,7 @@ import {
   getPredictionFixtures,
   getPredictionResults,
   getPredictionAccuracy,
+  askPrediction,
   API,
 } from "@/lib/api"
 
@@ -35,6 +36,10 @@ import {
   Circle,
   SplitSquareHorizontal,
   Search,
+  MessageSquare,
+  Send,
+  Sparkles,
+  ChevronDown,
 } from "lucide-react"
 import {
   XAxis,
@@ -1157,7 +1162,8 @@ export default function PredictionsPage() {
           </div>
 
           {consensusResult && consensusFixture && (
-            <div className="border-t border-border px-6 py-5 bg-secondary/10">
+            <>
+              <div className="border-t border-border px-6 py-5 bg-secondary/10">
               {consensusResult.error ? (
                 <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
                   <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
@@ -1359,7 +1365,11 @@ export default function PredictionsPage() {
                   </div>
                 )
               })()}
-            </div>
+              </div>
+              <div className="px-6 pb-5">
+                <PredictionQA consensusResult={consensusResult} fixture={consensusFixture} />
+              </div>
+            </>
           )}
         </div>
 
@@ -1650,6 +1660,166 @@ function StatLine({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between">
       <span className="text-[11px] text-muted-foreground">{label}</span>
       <span className="text-xs font-bold font-mono text-foreground">{value}</span>
+    </div>
+  )
+}
+
+// ── Prediction Q&A Panel ──────────────────────────────────────────────────────
+const QUICK_QUESTIONS = [
+  "Why is this outcome favored?",
+  "What are the best bets?",
+  "Which engine disagrees and why?",
+  "Is BTTS likely here?",
+  "How confident should I be?",
+  "What does the xG suggest?",
+]
+
+export function PredictionQA({
+  consensusResult,
+  fixture,
+}: {
+  consensusResult: Record<string, any> | null
+  fixture: Record<string, any> | null
+}) {
+  const [open, setOpen]         = useState(false)
+  const [question, setQuestion] = useState("")
+  const [answer, setAnswer]     = useState<string | null>(null)
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState<string | null>(null)
+  const [provider, setProvider] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const answerRef = useRef<HTMLDivElement>(null)
+
+  const matchLabel = fixture
+    ? `${fixture.home_team ?? fixture.home_name ?? ""} vs ${fixture.away_team ?? fixture.away_name ?? ""}`
+    : "this match"
+
+  const handleAsk = async (q: string) => {
+    if (!q.trim() || loading) return
+    setLoading(true)
+    setAnswer(null)
+    setError(null)
+    setProvider(null)
+    try {
+      const payload: any = { question: q.trim() }
+      if (fixture?.id && fixture.id !== -1) payload.match_id = fixture.id
+      if (fixture?.home_team_id) payload.home_team_id = fixture.home_team_id
+      if (fixture?.away_team_id) payload.away_team_id = fixture.away_team_id
+      if (fixture?.league_id)    payload.league_id    = fixture.league_id
+      if (fixture?.season_id)    payload.season_id    = fixture.season_id
+      const res = await askPrediction(payload)
+      setAnswer(res.answer)
+      setProvider(res.provider)
+      setTimeout(() => answerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100)
+    } catch (err: any) {
+      const msg = err?.message || ""
+      if (msg.includes("503") || msg.includes("No LLM")) {
+        setError("AI service unavailable. Check that GROQ_API_KEY or GEMINI_API_KEY is set in Railway environment variables.")
+      } else if (msg.includes("404")) {
+        setError("No prediction data found for this match. Run a consensus prediction first.")
+      } else {
+        setError("Could not get an answer right now. Try again in a moment.")
+      }
+    }
+    setLoading(false)
+  }
+
+  if (!consensusResult || consensusResult.error) return null
+
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden mt-4">
+      {/* Header — always visible */}
+      <button
+        onClick={() => { setOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 150) }}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-secondary/20 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+            <Sparkles className="h-4 w-4 text-primary" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-bold text-foreground">Ask AI about this prediction</p>
+            <p className="text-xs text-muted-foreground">Any question about {matchLabel}</p>
+          </div>
+        </div>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {/* Collapsible body */}
+      {open && (
+        <div className="border-t border-border px-5 py-4 space-y-4">
+          {/* Quick questions */}
+          <div className="flex flex-wrap gap-2">
+            {QUICK_QUESTIONS.map((q) => (
+              <button
+                key={q}
+                onClick={() => { setQuestion(q); handleAsk(q) }}
+                disabled={loading}
+                className="text-xs px-3 py-1.5 rounded-full border border-border bg-secondary/30 text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-colors disabled:opacity-40"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+
+          {/* Free-text input */}
+          <div className="flex gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAsk(question)}
+              placeholder="Ask anything about this prediction…"
+              className="flex-1 rounded-lg border border-border bg-secondary/20 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <button
+              onClick={() => handleAsk(question)}
+              disabled={loading || !question.trim()}
+              className="flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {loading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              {loading ? "Thinking…" : "Ask"}
+            </button>
+          </div>
+
+          {/* Answer */}
+          {loading && (
+            <div className="flex items-center gap-3 rounded-lg bg-primary/5 border border-primary/20 px-4 py-3">
+              <Sparkles className="h-4 w-4 text-primary animate-pulse flex-shrink-0" />
+              <p className="text-sm text-muted-foreground animate-pulse">Analysing prediction data…</p>
+            </div>
+          )}
+
+          {error && !loading && (
+            <div className="flex items-start gap-3 rounded-lg bg-destructive/5 border border-destructive/20 px-4 py-3">
+              <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+
+          {answer && !loading && (
+            <div ref={answerRef} className="rounded-lg bg-secondary/20 border border-border px-4 py-4 space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <MessageSquare className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-semibold text-primary uppercase tracking-wider">AI Answer</span>
+                {provider && (
+                  <span className="ml-auto text-[10px] text-muted-foreground px-2 py-0.5 rounded-full bg-secondary/50 border border-border">
+                    via {provider === "groq" ? "Groq · Llama 3" : "Gemini Flash"}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{answer}</p>
+              <button
+                onClick={() => { setAnswer(null); setQuestion(""); setProvider(null); inputRef.current?.focus() }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
+              >
+                Ask another question →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

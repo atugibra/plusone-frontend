@@ -128,3 +128,17 @@ export const getAutoConsensusStatus = () => req('/api/predictions/auto-consensus
 export const triggerAutoConsensus   = () =>
     authReq('/api/predictions/auto-consensus', { method: 'POST' });
 
+// ── Prediction Q&A (LLM-powered) ─────────────────────────────────────────────
+export const askPrediction = (payload: {
+    question: string;
+    match_id?:     number;
+    home_team_id?: number;
+    away_team_id?: number;
+    league_id?:    number;
+    season_id?:    number;
+}) =>
+    req('/api/predict/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
