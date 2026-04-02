@@ -136,9 +136,13 @@ export const askPrediction = (payload: {
     away_team_id?: number;
     league_id?:    number;
     season_id?:    number;
+    provider?:     string;
+    model?:        string;
 }) =>
     req('/api/predict/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
     });
+
+export const getAIModels = () => req('/api/predict/models');

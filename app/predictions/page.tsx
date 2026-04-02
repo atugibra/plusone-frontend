@@ -14,6 +14,7 @@ import {
   getPredictionResults,
   getPredictionAccuracy,
   askPrediction,
+  getAIModels,
   API,
 } from "@/lib/api"
 
@@ -1674,6 +1675,18 @@ const QUICK_QUESTIONS = [
   "What does the xG suggest?",
 ]
 
+// Model catalogue — mirrors backend AVAILABLE_MODELS
+// These are kept in sync via the /api/predict/models endpoint on open
+const GROQ_MODELS = [
+  { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B · Smartest" },
+  { id: "llama-3.1-8b-instant",    label: "Llama 3.1 8B · Fastest"  },
+  { id: "mixtral-8x7b-32768",      label: "Mixtral 8x7B · Long ctx" },
+]
+const GEMINI_MODELS = [
+  { id: "gemini-2.0-flash",      label: "Gemini 2.0 Flash · Smart" },
+  { id: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite · Fast" },
+]
+
 export function PredictionQA({
   consensusResult,
   fixture,
@@ -1681,40 +1694,74 @@ export function PredictionQA({
   consensusResult: Record<string, any> | null
   fixture: Record<string, any> | null
 }) {
-  const [open, setOpen]         = useState(false)
-  const [question, setQuestion] = useState("")
-  const [answer, setAnswer]     = useState<string | null>(null)
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState<string | null>(null)
-  const [provider, setProvider] = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [open, setOpen]               = useState(false)
+  const [question, setQuestion]       = useState("")
+  const [answer, setAnswer]           = useState<string | null>(null)
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState<string | null>(null)
+  const [usedProvider, setUsedProvider] = useState<string | null>(null)
+  const [usedModel, setUsedModel]     = useState<string | null>(null)
+
+  // Model selector state
+  const [selectedProvider, setSelectedProvider] = useState<"groq" | "gemini">("groq")
+  const [selectedModel, setSelectedModel]       = useState(GROQ_MODELS[0].id)
+  const [configuredProviders, setConfiguredProviders] = useState<{ groq: boolean; gemini: boolean }>({ groq: true, gemini: true })
+
+  const inputRef  = useRef<HTMLInputElement>(null)
   const answerRef = useRef<HTMLDivElement>(null)
 
   const matchLabel = fixture
     ? `${fixture.home_team ?? fixture.home_name ?? ""} vs ${fixture.away_team ?? fixture.away_name ?? ""}`
     : "this match"
 
+  // Fetch which providers are configured when panel opens
+  useEffect(() => {
+    if (!open) return
+    getAIModels().then((data: any) => {
+      if (data?.configured) setConfiguredProviders(data.configured)
+      // If groq not configured but gemini is, switch default
+      if (!data?.configured?.groq && data?.configured?.gemini) {
+        setSelectedProvider("gemini")
+        setSelectedModel(GEMINI_MODELS[0].id)
+      }
+    }).catch(() => {/* silently ignore — defaults are fine */})
+  }, [open])
+
+  // When provider changes, reset model to first option for that provider
+  const handleProviderChange = (p: "groq" | "gemini") => {
+    setSelectedProvider(p)
+    setSelectedModel(p === "groq" ? GROQ_MODELS[0].id : GEMINI_MODELS[0].id)
+  }
+
+  const currentModels = selectedProvider === "groq" ? GROQ_MODELS : GEMINI_MODELS
+
   const handleAsk = async (q: string) => {
     if (!q.trim() || loading) return
     setLoading(true)
     setAnswer(null)
     setError(null)
-    setProvider(null)
+    setUsedProvider(null)
+    setUsedModel(null)
     try {
-      const payload: any = { question: q.trim() }
-      if (fixture?.id && fixture.id !== -1) payload.match_id = fixture.id
-      if (fixture?.home_team_id) payload.home_team_id = fixture.home_team_id
-      if (fixture?.away_team_id) payload.away_team_id = fixture.away_team_id
-      if (fixture?.league_id)    payload.league_id    = fixture.league_id
-      if (fixture?.season_id)    payload.season_id    = fixture.season_id
+      const payload: any = {
+        question: q.trim(),
+        provider: selectedProvider,
+        model:    selectedModel,
+      }
+      if (fixture?.id && fixture.id !== -1) payload.match_id     = fixture.id
+      if (fixture?.home_team_id)            payload.home_team_id = fixture.home_team_id
+      if (fixture?.away_team_id)            payload.away_team_id = fixture.away_team_id
+      if (fixture?.league_id)               payload.league_id    = fixture.league_id
+      if (fixture?.season_id)               payload.season_id    = fixture.season_id
       const res = await askPrediction(payload)
       setAnswer(res.answer)
-      setProvider(res.provider)
+      setUsedProvider(res.provider)
+      setUsedModel(res.model)
       setTimeout(() => answerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100)
     } catch (err: any) {
       const msg = err?.message || ""
       if (msg.includes("503") || msg.includes("No LLM")) {
-        setError("AI service unavailable. Check that GROQ_API_KEY or GEMINI_API_KEY is set in Railway environment variables.")
+        setError("AI service unavailable. Check that GROQ_API_KEY or GEMINI_API_KEY is set in Railway.")
       } else if (msg.includes("404")) {
         setError("No prediction data found for this match. Run a consensus prediction first.")
       } else {
@@ -1722,6 +1769,15 @@ export function PredictionQA({
       }
     }
     setLoading(false)
+  }
+
+  // Friendly badge label for used model
+  const modelBadge = () => {
+    if (!usedProvider || !usedModel) return null
+    const allModels = [...GROQ_MODELS, ...GEMINI_MODELS]
+    const found = allModels.find(m => m.id === usedModel)
+    const providerLabel = usedProvider === "groq" ? "Groq" : "Gemini"
+    return found ? `${providerLabel} · ${found.label.split("·")[0].trim()}` : `${providerLabel} · ${usedModel}`
   }
 
   if (!consensusResult || consensusResult.error) return null
@@ -1748,6 +1804,39 @@ export function PredictionQA({
       {/* Collapsible body */}
       {open && (
         <div className="border-t border-border px-5 py-4 space-y-4">
+
+          {/* ── Model selector ── */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Provider tabs */}
+            <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+              {(["groq", "gemini"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => handleProviderChange(p)}
+                  disabled={!configuredProviders[p]}
+                  className={`px-3 py-1.5 font-medium transition-colors capitalize
+                    ${selectedProvider === p
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/20 text-muted-foreground hover:bg-secondary/50"}
+                    disabled:opacity-40 disabled:cursor-not-allowed`}
+                >
+                  {p === "groq" ? "Groq" : "Gemini"}
+                </button>
+              ))}
+            </div>
+            {/* Model dropdown */}
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="text-xs rounded-lg border border-border bg-secondary/20 px-2 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+            >
+              {currentModels.map((m) => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
+            </select>
+            <span className="text-[10px] text-muted-foreground">Free tier</span>
+          </div>
+
           {/* Quick questions */}
           <div className="flex flex-wrap gap-2">
             {QUICK_QUESTIONS.map((q) => (
@@ -1783,14 +1872,17 @@ export function PredictionQA({
             </button>
           </div>
 
-          {/* Answer */}
+          {/* Loading */}
           {loading && (
             <div className="flex items-center gap-3 rounded-lg bg-primary/5 border border-primary/20 px-4 py-3">
               <Sparkles className="h-4 w-4 text-primary animate-pulse flex-shrink-0" />
-              <p className="text-sm text-muted-foreground animate-pulse">Analysing prediction data…</p>
+              <p className="text-sm text-muted-foreground animate-pulse">
+                Analysing with {selectedProvider === "groq" ? "Groq" : "Gemini"}…
+              </p>
             </div>
           )}
 
+          {/* Error */}
           {error && !loading && (
             <div className="flex items-start gap-3 rounded-lg bg-destructive/5 border border-destructive/20 px-4 py-3">
               <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
@@ -1798,20 +1890,21 @@ export function PredictionQA({
             </div>
           )}
 
+          {/* Answer */}
           {answer && !loading && (
             <div ref={answerRef} className="rounded-lg bg-secondary/20 border border-border px-4 py-4 space-y-2">
               <div className="flex items-center gap-2 mb-1">
                 <MessageSquare className="h-3.5 w-3.5 text-primary" />
                 <span className="text-xs font-semibold text-primary uppercase tracking-wider">AI Answer</span>
-                {provider && (
+                {modelBadge() && (
                   <span className="ml-auto text-[10px] text-muted-foreground px-2 py-0.5 rounded-full bg-secondary/50 border border-border">
-                    via {provider === "groq" ? "Groq · Llama 3" : "Gemini Flash"}
+                    via {modelBadge()}
                   </span>
                 )}
               </div>
               <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{answer}</p>
               <button
-                onClick={() => { setAnswer(null); setQuestion(""); setProvider(null); inputRef.current?.focus() }}
+                onClick={() => { setAnswer(null); setQuestion(""); setUsedProvider(null); setUsedModel(null); inputRef.current?.focus() }}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
               >
                 Ask another question →
