@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect, useRef } from "react"
 import { Header } from "@/components/header"
@@ -137,7 +137,7 @@ export default function PredictionsPage() {
     }
   }, [])
 
-  // ── Training with background polling ───────────────────────────────────────
+  // â”€â”€ Training with background polling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // The backend /train endpoint returns immediately (BackgroundTasks).
   // We poll /training-status every 3s until done or error.
   const pollTrainingStatus = async (attempts = 0) => {
@@ -167,15 +167,15 @@ export default function PredictionsPage() {
         setTraining(false)
         setTrainingMessage("")
       } else {
-        // Still running — compute elapsed time and poll again
+        // Still running â€” compute elapsed time and poll again
         const elapsed = status.started_at
           ? Math.round(Date.now() / 1000 - status.started_at)
           : attempts * 3
-        setTrainingMessage(`Training in progress… ${elapsed}s elapsed`)
+        setTrainingMessage(`Training in progressâ€¦ ${elapsed}s elapsed`)
         pollRef.current = setTimeout(() => pollTrainingStatus(attempts + 1), 3000)
       }
     } catch {
-      // Network hiccup — keep retrying
+      // Network hiccup â€” keep retrying
       pollRef.current = setTimeout(() => pollTrainingStatus(attempts + 1), 3000)
     }
   }
@@ -183,20 +183,20 @@ export default function PredictionsPage() {
   const handleTrain = async () => {
     setTraining(true)
     setTrainResult(null)
-    setTrainingMessage("Starting training…")
+    setTrainingMessage("Starting trainingâ€¦")
 
     try {
       const r = await trainPredictionModel()
 
       if (r?.started === false) {
-        // Already in progress — just start polling for the running job
-        setTrainingMessage("Training already in progress, polling for updates…")
+        // Already in progress â€” just start polling for the running job
+        setTrainingMessage("Training already in progress, polling for updatesâ€¦")
         pollRef.current = setTimeout(() => pollTrainingStatus(0), 3000)
         return
       }
 
-      // Training kicked off — start polling /training-status
-      setTrainingMessage("Training started in background…")
+      // Training kicked off â€” start polling /training-status
+      setTrainingMessage("Training started in backgroundâ€¦")
       pollRef.current = setTimeout(() => pollTrainingStatus(0), 3000)
     } catch (err: any) {
       const msg = err?.message || ""
@@ -206,9 +206,9 @@ export default function PredictionsPage() {
         msg.includes("Failed to fetch") ||
         msg.includes("NetworkError")
       ) {
-        // The HTTP/2 connection dropped — training may still have started on the server.
+        // The HTTP/2 connection dropped â€” training may still have started on the server.
         // Begin polling to find out.
-        setTrainingMessage("Connection dropped — checking if training started on the server…")
+        setTrainingMessage("Connection dropped â€” checking if training started on the serverâ€¦")
         pollRef.current = setTimeout(() => pollTrainingStatus(0), 5000)
       } else {
         setTrainResult({ success: false, error: "Could not reach backend. Is the server running?" })
@@ -218,7 +218,7 @@ export default function PredictionsPage() {
     }
   }
 
-  // ── Fixture prediction with 503 / 422 awareness ────────────────────────────
+  // â”€â”€ Fixture prediction with 503 / 422 awareness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handlePredictFixture = async (fixture: any) => {
     setPredictingFixture(fixture.id)
     setSelectedFixture(fixture)
@@ -242,7 +242,7 @@ export default function PredictionsPage() {
 
         if (status === 503) {
           errorMsg =
-            "Backend is unavailable (503 Service Unavailable). The server may be cold-starting — wait ~30 seconds and try again."
+            "Backend is unavailable (503 Service Unavailable). The server may be cold-starting â€” wait ~30 seconds and try again."
         } else if (status === 422) {
           errorMsg =
             "Model not trained yet. Click 'Train Engine' above, wait for training to complete, then predict."
@@ -265,7 +265,7 @@ export default function PredictionsPage() {
       if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
         setFixtureResult({
           error:
-            "Cannot reach the backend. The server may be sleeping (cold start) — wait 30 seconds and try again.",
+            "Cannot reach the backend. The server may be sleeping (cold start) â€” wait 30 seconds and try again.",
         })
       } else {
         setFixtureResult({ error: "Prediction failed. Train the model first." })
@@ -328,7 +328,7 @@ export default function PredictionsPage() {
     setPredictingConsensus(null)
   }
 
-  // ── Custom match consensus (team picker, not fixture-based) ───────────────
+  // â”€â”€ Custom match consensus (team picker, not fixture-based) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleCustomConsensus = async () => {
     if (!customHome || !customAway) return
     const homeTeam = teams.find((t: any) => String(t.id) === customHome)
@@ -441,7 +441,7 @@ export default function PredictionsPage() {
           />
         </div>
 
-        {/* ── ML Prediction Engine Section ─────────────────────────────────── */}
+        {/* â”€â”€ ML Prediction Engine Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className={`rounded-lg border border-border bg-card mb-6 overflow-hidden ${entryAnim} delay-150`}>
           {/* Engine Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-b border-border">
@@ -450,13 +450,13 @@ export default function PredictionsPage() {
               <div>
                 <h2 className="text-base font-bold text-foreground">ML Prediction Engine</h2>
                 <p className="text-xs text-muted-foreground">
-                  XGBoost + Random Forest ensemble — trained on historical match data
+                  XGBoost + Random Forest ensemble â€” trained on historical match data
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
               {engineLoading ? (
-                <span className="text-xs text-muted-foreground animate-pulse">Loading status…</span>
+                <span className="text-xs text-muted-foreground animate-pulse">Loading statusâ€¦</span>
               ) : engineStatus?.model_trained ? (
                 <>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 text-success px-3 py-1 text-xs font-semibold">
@@ -493,7 +493,7 @@ export default function PredictionsPage() {
                 className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${training ? "animate-spin" : ""}`} />
-                {training ? "Training…" : engineStatus?.model_trained ? "Retrain" : "Train Engine"}
+                {training ? "Trainingâ€¦" : engineStatus?.model_trained ? "Retrain" : "Train Engine"}
               </button>
             </div>
           </div>
@@ -504,7 +504,7 @@ export default function PredictionsPage() {
               <Clock className="h-4 w-4 animate-pulse flex-shrink-0" />
               <span>{trainingMessage}</span>
               <span className="text-xs text-muted-foreground ml-auto hidden sm:inline">
-                Runs in background — page will update automatically when done.
+                Runs in background â€” page will update automatically when done.
               </span>
             </div>
           )}
@@ -519,10 +519,10 @@ export default function PredictionsPage() {
               }`}
             >
               {trainResult.success
-                ? `✅ Trained on ${trainResult.matches_trained} matches. CV accuracy: ${Math.round(
+                ? `âœ… Trained on ${trainResult.matches_trained} matches. CV accuracy: ${Math.round(
                     (trainResult.cv_accuracy || 0) * 100
-                  )}% — completed in ${trainResult.elapsed_seconds}s`
-                : `❌ ${trainResult.error || "Training failed"}`}
+                  )}% â€” completed in ${trainResult.elapsed_seconds}s`
+                : `âŒ ${trainResult.error || "Training failed"}`}
             </div>
           )}
 
@@ -531,7 +531,7 @@ export default function PredictionsPage() {
           <div className="px-6 py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
               <h3 className="text-sm font-semibold text-foreground">
-                Upcoming Fixtures — Click to Predict
+                Upcoming Fixtures â€” Click to Predict
               </h3>
               <select
                 value={fixtureLeague}
@@ -549,7 +549,7 @@ export default function PredictionsPage() {
 
             {fixturesLoading ? (
               <p className="text-sm text-muted-foreground animate-pulse py-4 text-center">
-                Loading fixtures…
+                Loading fixturesâ€¦
               </p>
             ) : displayedFixtures.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">
@@ -583,9 +583,9 @@ export default function PredictionsPage() {
                           {fx.away_team}
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {fx.league} ·{" "}
+                          {fx.league} Â·{" "}
                           {fx.match_date ? new Date(fx.match_date).toLocaleDateString() : "TBD"}
-                          {fx.gameweek ? ` · GW${fx.gameweek}` : ""}
+                          {fx.gameweek ? ` Â· GW${fx.gameweek}` : ""}
                         </p>
                       </div>
                       <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
@@ -606,7 +606,7 @@ export default function PredictionsPage() {
                       ) : (
                         <Play className="h-3 w-3" />
                       )}
-                      {predictingFixture === fx.id ? "Predicting…" : "Predict"}
+                      {predictingFixture === fx.id ? "Predictingâ€¦" : "Predict"}
                     </button>
                   </div>
                 ))}
@@ -745,7 +745,7 @@ export default function PredictionsPage() {
                         <ul className="space-y-2">
                           {fixtureResult.key_factors.map((f: string, i: number) => (
                             <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                              <span className="text-primary mt-0.5 flex-shrink-0">▸</span>
+                              <span className="text-primary mt-0.5 flex-shrink-0">â–¸</span>
                               {f}
                             </li>
                           ))}
@@ -837,7 +837,7 @@ export default function PredictionsPage() {
 
         {/* Generate Custom Prediction */}
         <div className={`rounded-lg border border-border bg-card ${cardPadding} mb-6 ${entryAnim} delay-200`}>
-          <h2 className="text-xl font-bold text-foreground mb-4">🔮 Generate Custom Prediction</h2>
+          <h2 className="text-xl font-bold text-foreground mb-4">ðŸ”® Generate Custom Prediction</h2>
           <div className="mb-4">
             <label className="text-xs text-muted-foreground mb-1.5 block">
               Filter by League (optional)
@@ -941,7 +941,7 @@ export default function PredictionsPage() {
                     </div>
                     {customResult.confidence === "high" && (
                       <span className="ml-2 inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary uppercase animate-pulse">
-                        🔥 High Confidence Tip!
+                        ðŸ”¥ High Confidence Tip!
                       </span>
                     )}
                   </h3>
@@ -975,7 +975,7 @@ export default function PredictionsPage() {
           )}
         </div>
 
-        {/* ── Dynamic Consensus Engine Section ──────────────────────────── */}
+        {/* â”€â”€ Dynamic Consensus Engine Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className={`rounded-lg border border-border bg-card mb-6 overflow-hidden ${entryAnim} delay-250`}>
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-b border-border">
@@ -986,7 +986,7 @@ export default function PredictionsPage() {
               <div>
                 <h2 className="text-base font-bold text-foreground">Dynamic Consensus Engine</h2>
                 <p className="text-xs text-muted-foreground">
-                  Blends DC + ML + Legacy + Enrichment models — weights adapt to historical accuracy
+                  Blends DC + ML + Legacy + Enrichment models â€” weights adapt to historical accuracy
                 </p>
               </div>
             </div>
@@ -1001,7 +1001,7 @@ export default function PredictionsPage() {
           {/* Fixture Picker */}
           <div className="px-6 py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-              <h3 className="text-sm font-semibold text-foreground">Select Fixture — Consensus Predict</h3>
+              <h3 className="text-sm font-semibold text-foreground">Select Fixture â€” Consensus Predict</h3>
               <div className="flex items-center gap-2">
                 {/* League filter */}
                 <select
@@ -1019,7 +1019,7 @@ export default function PredictionsPage() {
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Search team…"
+                    placeholder="Search teamâ€¦"
                     value={consensusSearch}
                     onChange={(e: any) => setConsensusSearch(e.target.value)}
                     className="pl-7 pr-3 py-1.5 rounded-lg border border-border bg-secondary/30 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-36"
@@ -1029,7 +1029,7 @@ export default function PredictionsPage() {
             </div>
 
             {fixturesLoading ? (
-              <p className="text-sm text-muted-foreground animate-pulse py-4 text-center">Loading fixtures…</p>
+              <p className="text-sm text-muted-foreground animate-pulse py-4 text-center">Loading fixturesâ€¦</p>
             ) : consensusFixtures.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">No upcoming fixtures. Sync data first.</p>
             ) : (
@@ -1060,8 +1060,8 @@ export default function PredictionsPage() {
                           {fx.away_team}
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {fx.league} · {fx.match_date ? new Date(fx.match_date).toLocaleDateString() : "TBD"}
-                          {fx.gameweek ? ` · GW${fx.gameweek}` : ""}
+                          {fx.league} Â· {fx.match_date ? new Date(fx.match_date).toLocaleDateString() : "TBD"}
+                          {fx.gameweek ? ` Â· GW${fx.gameweek}` : ""}
                         </p>
                       </div>
                       <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
@@ -1082,14 +1082,14 @@ export default function PredictionsPage() {
                       ) : (
                         <GitMerge className="h-3 w-3" />
                       )}
-                      {predictingConsensus === fx.id ? "Analysing…" : "Consensus"}
+                      {predictingConsensus === fx.id ? "Analysingâ€¦" : "Consensus"}
                     </button>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* ── Can't find it? Custom match search ─────────────────────── */}
+            {/* â”€â”€ Can't find it? Custom match search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className="mt-4 rounded-lg border border-dashed border-border bg-secondary/10">
               <button
                 onClick={() => setShowCustomForm((v: boolean) => !v)}
@@ -1099,7 +1099,7 @@ export default function PredictionsPage() {
                   <Search className="h-3.5 w-3.5" />
                   Can't find the match? Search by team
                 </span>
-                <span>{showCustomForm ? "▲" : "▼"}</span>
+                <span>{showCustomForm ? "â–²" : "â–¼"}</span>
               </button>
               {showCustomForm && (
                 <div className="px-4 pb-4 space-y-3">
@@ -1122,7 +1122,7 @@ export default function PredictionsPage() {
                         onChange={(e: any) => setCustomHome(e.target.value)}
                         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                       >
-                        <option value="">Select home team…</option>
+                        <option value="">Select home teamâ€¦</option>
                         {customConsensusTeams.map((t: any) => (
                           <option key={t.id} value={t.id}>{t.name}</option>
                         ))}
@@ -1136,7 +1136,7 @@ export default function PredictionsPage() {
                         onChange={(e: any) => setCustomAway(e.target.value)}
                         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                       >
-                        <option value="">Select away team…</option>
+                        <option value="">Select away teamâ€¦</option>
                         {customConsensusTeams
                           .filter((t: any) => String(t.id) !== customHome)
                           .map((t: any) => (
@@ -1154,7 +1154,7 @@ export default function PredictionsPage() {
                       ) : (
                         <GitMerge className="h-3 w-3" />
                       )}
-                      {customConsensusLoading ? "Analysing…" : "Run Consensus"}
+                      {customConsensusLoading ? "Analysingâ€¦" : "Run Consensus"}
                     </button>
                   </div>
                 </div>
@@ -1267,7 +1267,7 @@ export default function PredictionsPage() {
                         {(["dc", "ml", "legacy"] as const).map((key) => {
                           const e        = eng[key] ?? {}
                           const labels   = { dc: "Dixon-Coles", ml: "ML Ensemble", legacy: "Legacy Heuristic" }
-                          const outcome  = e.predicted_outcome ?? "—"
+                          const outcome  = e.predicted_outcome ?? "â€”"
                           const outcomeColor =
                             outcome === cs.predicted_outcome ? "text-success" : "text-muted-foreground"
                           return (
@@ -1303,7 +1303,7 @@ export default function PredictionsPage() {
                             ? "bg-success/10 text-success"
                             : "bg-warning/10 text-warning"
                         }`}>
-                          {wts.source === "dynamic_historical" ? "⚡ Dynamic" : "Default"}
+                          {wts.source === "dynamic_historical" ? "âš¡ Dynamic" : "Default"}
                         </span>
                       </div>
                       <div className="flex rounded-lg overflow-hidden h-7 text-xs font-bold">
@@ -1357,7 +1357,7 @@ export default function PredictionsPage() {
                           )}
                           {mkt.home_xg != null && (
                             <span className="rounded-full px-3 py-1 text-xs font-semibold border border-border bg-secondary/30 text-muted-foreground">
-                              xG {mkt.home_xg} – {mkt.away_xg}
+                              xG {mkt.home_xg} â€“ {mkt.away_xg}
                             </span>
                           )}
                         </div>
@@ -1380,11 +1380,11 @@ export default function PredictionsPage() {
           <div className="w-full lg:w-[400px] shrink-0 flex flex-col gap-6">
             <div>
               <h2 className="text-sm font-semibold text-foreground mb-3">
-                Recent Results — From Database
+                Recent Results â€” From Database
               </h2>
               {resultsLoading ? (
                 <p className="text-sm text-muted-foreground animate-pulse py-8 text-center">
-                  Loading results from Supabase…
+                  Loading results from Supabaseâ€¦
                 </p>
               ) : liveResults.length === 0 ? (
                 <div className="rounded-lg border border-border bg-card p-8 text-center">
@@ -1421,7 +1421,7 @@ export default function PredictionsPage() {
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <p className="text-xs text-muted-foreground mb-0.5">
-                          {selected.league} · {selected.season}
+                          {selected.league} Â· {selected.season}
                         </p>
                         <h3 className="text-sm font-semibold text-foreground">
                           {selected.home_team} vs {selected.away_team}
@@ -1430,13 +1430,13 @@ export default function PredictionsPage() {
                       {selected.home_score !== null && (
                         <div className="text-right">
                           <p className="text-2xl font-black font-mono text-foreground">
-                            {selected.home_score} – {selected.away_score}
+                            {selected.home_score} â€“ {selected.away_score}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {selected.match_date
                               ? new Date(selected.match_date).toLocaleDateString()
                               : ""}
-                            {selected.gameweek ? ` · GW${selected.gameweek}` : ""}
+                            {selected.gameweek ? ` Â· GW${selected.gameweek}` : ""}
                           </p>
                         </div>
                       )}
@@ -1493,12 +1493,12 @@ export default function PredictionsPage() {
             <div className="rounded-lg border border-border bg-card p-4">
               <h3 className="text-sm font-semibold text-foreground mb-1">Weekly Accuracy Trend</h3>
               <p className="text-xs text-muted-foreground mb-4">
-                Model performance by gameweek — from Supabase
+                Model performance by gameweek â€” from Supabase
               </p>
               {weeklyTrends.length === 0 ? (
                 <div className="flex items-center justify-center h-[200px] rounded-lg bg-secondary/20 border border-dashed border-border">
                   <p className="text-sm text-muted-foreground">
-                    No gameweek data yet — sync match data first
+                    No gameweek data yet â€” sync match data first
                   </p>
                 </div>
               ) : (
@@ -1643,13 +1643,13 @@ function ResultCard({
         </div>
         <div className="text-right">
           <p className="text-lg font-black font-mono text-foreground">
-            {match.home_score} – {match.away_score}
+            {match.home_score} â€“ {match.away_score}
           </p>
         </div>
       </div>
 
       <p className="text-[10px] text-muted-foreground mt-2">
-        {match.league} ·{" "}
+        {match.league} Â·{" "}
         {match.match_date ? new Date(match.match_date).toLocaleDateString() : ""}
       </p>
     </button>
@@ -1665,7 +1665,7 @@ function StatLine({ label, value }: { label: string; value: string }) {
   )
 }
 
-// ── Prediction Q&A Panel ──────────────────────────────────────────────────────
+// ── Prediction Q&A — Floating Side Panel ──────────────────────────────────────
 const QUICK_QUESTIONS = [
   "Why is this outcome favored?",
   "What are the best bets?",
@@ -1675,8 +1675,6 @@ const QUICK_QUESTIONS = [
   "What does the xG suggest?",
 ]
 
-// Model catalogue — mirrors backend AVAILABLE_MODELS
-// These are kept in sync via the /api/predict/models endpoint on open
 const GROQ_MODELS = [
   { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B · Smartest" },
   { id: "llama-3.1-8b-instant",    label: "Llama 3.1 8B · Fastest"  },
@@ -1687,6 +1685,8 @@ const GEMINI_MODELS = [
   { id: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite · Fast" },
 ]
 
+type ChatMessage = { role: "user" | "assistant"; content: string }
+
 export function PredictionQA({
   consensusResult,
   fixture,
@@ -1694,40 +1694,42 @@ export function PredictionQA({
   consensusResult: Record<string, any> | null
   fixture: Record<string, any> | null
 }) {
-  const [open, setOpen]               = useState(false)
-  const [question, setQuestion]       = useState("")
-  const [answer, setAnswer]           = useState<string | null>(null)
-  const [loading, setLoading]         = useState(false)
-  const [error, setError]             = useState<string | null>(null)
-  const [usedProvider, setUsedProvider] = useState<string | null>(null)
-  const [usedModel, setUsedModel]     = useState<string | null>(null)
+  const [open, setOpen]             = useState(false)
+  const [question, setQuestion]     = useState("")
+  const [history, setHistory]       = useState<ChatMessage[]>([])
+  const [loading, setLoading]       = useState(false)
+  const [error, setError]           = useState<string | null>(null)
 
-  // Model selector state
   const [selectedProvider, setSelectedProvider] = useState<"groq" | "gemini">("groq")
   const [selectedModel, setSelectedModel]       = useState(GROQ_MODELS[0].id)
   const [configuredProviders, setConfiguredProviders] = useState<{ groq: boolean; gemini: boolean }>({ groq: true, gemini: true })
 
   const inputRef  = useRef<HTMLInputElement>(null)
-  const answerRef = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
 
   const matchLabel = fixture
     ? `${fixture.home_team ?? fixture.home_name ?? ""} vs ${fixture.away_team ?? fixture.away_name ?? ""}`
     : "this match"
 
-  // Fetch which providers are configured when panel opens
   useEffect(() => {
     if (!open) return
     getAIModels().then((data: any) => {
       if (data?.configured) setConfiguredProviders(data.configured)
-      // If groq not configured but gemini is, switch default
       if (!data?.configured?.groq && data?.configured?.gemini) {
         setSelectedProvider("gemini")
         setSelectedModel(GEMINI_MODELS[0].id)
       }
-    }).catch(() => {/* silently ignore — defaults are fine */})
+    }).catch(() => {})
   }, [open])
 
-  // When provider changes, reset model to first option for that provider
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 200)
+  }, [open])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [history, loading])
+
   const handleProviderChange = (p: "groq" | "gemini") => {
     setSelectedProvider(p)
     setSelectedModel(p === "groq" ? GROQ_MODELS[0].id : GEMINI_MODELS[0].id)
@@ -1737,16 +1739,18 @@ export function PredictionQA({
 
   const handleAsk = async (q: string) => {
     if (!q.trim() || loading) return
+    const userMsg: ChatMessage = { role: "user", content: q.trim() }
+    const updatedHistory = [...history, userMsg]
+    setHistory(updatedHistory)
+    setQuestion("")
     setLoading(true)
-    setAnswer(null)
     setError(null)
-    setUsedProvider(null)
-    setUsedModel(null)
     try {
       const payload: any = {
         question: q.trim(),
         provider: selectedProvider,
         model:    selectedModel,
+        history:  history,
       }
       if (fixture?.id && fixture.id !== -1) payload.match_id     = fixture.id
       if (fixture?.home_team_id)            payload.home_team_id = fixture.home_team_id
@@ -1754,104 +1758,161 @@ export function PredictionQA({
       if (fixture?.league_id)               payload.league_id    = fixture.league_id
       if (fixture?.season_id)               payload.season_id    = fixture.season_id
       const res = await askPrediction(payload)
-      setAnswer(res.answer)
-      setUsedProvider(res.provider)
-      setUsedModel(res.model)
-      setTimeout(() => answerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100)
+      setHistory([...updatedHistory, { role: "assistant", content: res.answer }])
     } catch (err: any) {
       const msg = err?.message || ""
       if (msg.includes("503") || msg.includes("No LLM")) {
-        setError("AI service unavailable. Check that GROQ_API_KEY or GEMINI_API_KEY is set in Railway.")
+        setError("AI service unavailable. Check GROQ_API_KEY or GEMINI_API_KEY in Railway.")
       } else if (msg.includes("404")) {
-        setError("No prediction data found for this match. Run a consensus prediction first.")
+        setError("No prediction data found. Run a consensus prediction first.")
       } else {
-        setError("Could not get an answer right now. Try again in a moment.")
+        setError("Could not get an answer. Try again in a moment.")
       }
+      setHistory(history)
     }
     setLoading(false)
-  }
-
-  // Friendly badge label for used model
-  const modelBadge = () => {
-    if (!usedProvider || !usedModel) return null
-    const allModels = [...GROQ_MODELS, ...GEMINI_MODELS]
-    const found = allModels.find(m => m.id === usedModel)
-    const providerLabel = usedProvider === "groq" ? "Groq" : "Gemini"
-    return found ? `${providerLabel} · ${found.label.split("·")[0].trim()}` : `${providerLabel} · ${usedModel}`
   }
 
   if (!consensusResult || consensusResult.error) return null
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden mt-4">
-      {/* Header — always visible */}
+    <>
+      {/* Floating trigger button */}
       <button
-        onClick={() => { setOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 150) }}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-secondary/20 transition-colors"
+        onClick={() => setOpen(true)}
+        title="Ask AI about this prediction"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-3 shadow-lg shadow-primary/30 hover:bg-primary/90 hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-sm"
       >
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
-            <Sparkles className="h-4 w-4 text-primary" />
-          </div>
-          <div className="text-left">
-            <p className="text-sm font-bold text-foreground">Ask AI about this prediction</p>
-            <p className="text-xs text-muted-foreground">Any question about {matchLabel}</p>
-          </div>
-        </div>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        <Sparkles className="h-4 w-4" />
+        Ask AI
       </button>
 
-      {/* Collapsible body */}
       {open && (
-        <div className="border-t border-border px-5 py-4 space-y-4">
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        />
+      )}
 
-          {/* ── Model selector ── */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Provider tabs */}
-            <div className="flex rounded-lg border border-border overflow-hidden text-xs">
-              {(["groq", "gemini"] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => handleProviderChange(p)}
-                  disabled={!configuredProviders[p]}
-                  className={`px-3 py-1.5 font-medium transition-colors capitalize
-                    ${selectedProvider === p
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary/20 text-muted-foreground hover:bg-secondary/50"}
-                    disabled:opacity-40 disabled:cursor-not-allowed`}
-                >
-                  {p === "groq" ? "Groq" : "Gemini"}
-                </button>
-              ))}
+      <div
+        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[400px] flex flex-col bg-card border-l border-border shadow-2xl transition-transform duration-300 ease-in-out ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+              <Sparkles className="h-4 w-4 text-primary" />
             </div>
-            {/* Model dropdown */}
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="text-xs rounded-lg border border-border bg-secondary/20 px-2 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
-            >
-              {currentModels.map((m) => (
-                <option key={m.id} value={m.id}>{m.label}</option>
-              ))}
-            </select>
-            <span className="text-[10px] text-muted-foreground">Free tier</span>
+            <div>
+              <p className="text-sm font-bold text-foreground">PlusOne AI</p>
+              <p className="text-xs text-muted-foreground truncate max-w-[220px]">{matchLabel}</p>
+            </div>
           </div>
-
-          {/* Quick questions */}
-          <div className="flex flex-wrap gap-2">
-            {QUICK_QUESTIONS.map((q) => (
+          <div className="flex items-center gap-2">
+            {history.length > 0 && (
               <button
-                key={q}
-                onClick={() => { setQuestion(q); handleAsk(q) }}
-                disabled={loading}
-                className="text-xs px-3 py-1.5 rounded-full border border-border bg-secondary/30 text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-colors disabled:opacity-40"
+                onClick={() => { setHistory([]); setError(null) }}
+                className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary/50 transition-colors"
               >
-                {q}
+                Clear
+              </button>
+            )}
+            <button
+              onClick={() => setOpen(false)}
+              className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-secondary/50 transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <ChevronDown className="h-4 w-4 -rotate-90" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-border shrink-0 bg-secondary/10">
+          <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+            {(["groq", "gemini"] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => handleProviderChange(p)}
+                disabled={!configuredProviders[p]}
+                className={`px-3 py-1.5 font-medium transition-colors capitalize ${
+                  selectedProvider === p
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary/20 text-muted-foreground hover:bg-secondary/50"
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
+              >
+                {p === "groq" ? "Groq" : "Gemini"}
               </button>
             ))}
           </div>
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="text-xs rounded-lg border border-border bg-secondary/20 px-2 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+          >
+            {currentModels.map((m) => (
+              <option key={m.id} value={m.id}>{m.label}</option>
+            ))}
+          </select>
+          <span className="text-[10px] text-muted-foreground">Free tier</span>
+        </div>
 
-          {/* Free-text input */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scrollbar-thin">
+          {history.length === 0 && !loading && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground text-center pt-2">Ask anything about this prediction</p>
+              {QUICK_QUESTIONS.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => handleAsk(q)}
+                  disabled={loading}
+                  className="w-full text-left text-xs px-3 py-2.5 rounded-lg border border-border bg-secondary/20 text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-colors disabled:opacity-40"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {history.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                msg.role === "user"
+                  ? "bg-primary text-primary-foreground rounded-tr-sm"
+                  : "bg-secondary/40 text-foreground border border-border rounded-tl-sm"
+              }`}>
+                {msg.role === "assistant" && (
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Sparkles className="h-3 w-3 text-primary" />
+                    <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">PlusOne AI</span>
+                  </div>
+                )}
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div className="flex justify-start">
+              <div className="bg-secondary/40 border border-border rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 text-primary animate-pulse" />
+                <span className="text-xs text-muted-foreground animate-pulse">Thinking...</span>
+              </div>
+            </div>
+          )}
+
+          {error && !loading && (
+            <div className="flex justify-start">
+              <div className="max-w-[85%] bg-destructive/5 border border-destructive/20 rounded-2xl rounded-tl-sm px-4 py-3 flex items-start gap-2">
+                <AlertCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+                <p className="text-xs text-destructive">{error}</p>
+              </div>
+            </div>
+          )}
+
+          <div ref={bottomRef} />
+        </div>
+
+        <div className="shrink-0 border-t border-border px-4 py-3 bg-card">
           <div className="flex gap-2">
             <input
               ref={inputRef}
@@ -1859,60 +1920,19 @@ export function PredictionQA({
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAsk(question)}
-              placeholder="Ask anything about this prediction…"
-              className="flex-1 rounded-lg border border-border bg-secondary/20 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              placeholder={history.length > 0 ? "Ask a follow-up..." : "Ask anything about this prediction..."}
+              className="flex-1 rounded-xl border border-border bg-secondary/20 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             <button
               onClick={() => handleAsk(question)}
               disabled={loading || !question.trim()}
-              className="flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="flex items-center justify-center rounded-xl bg-primary text-primary-foreground w-10 h-10 hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0"
             >
-              {loading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-              {loading ? "Thinking…" : "Ask"}
+              {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
           </div>
-
-          {/* Loading */}
-          {loading && (
-            <div className="flex items-center gap-3 rounded-lg bg-primary/5 border border-primary/20 px-4 py-3">
-              <Sparkles className="h-4 w-4 text-primary animate-pulse flex-shrink-0" />
-              <p className="text-sm text-muted-foreground animate-pulse">
-                Analysing with {selectedProvider === "groq" ? "Groq" : "Gemini"}…
-              </p>
-            </div>
-          )}
-
-          {/* Error */}
-          {error && !loading && (
-            <div className="flex items-start gap-3 rounded-lg bg-destructive/5 border border-destructive/20 px-4 py-3">
-              <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-destructive">{error}</p>
-            </div>
-          )}
-
-          {/* Answer */}
-          {answer && !loading && (
-            <div ref={answerRef} className="rounded-lg bg-secondary/20 border border-border px-4 py-4 space-y-2">
-              <div className="flex items-center gap-2 mb-1">
-                <MessageSquare className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-semibold text-primary uppercase tracking-wider">AI Answer</span>
-                {modelBadge() && (
-                  <span className="ml-auto text-[10px] text-muted-foreground px-2 py-0.5 rounded-full bg-secondary/50 border border-border">
-                    via {modelBadge()}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{answer}</p>
-              <button
-                onClick={() => { setAnswer(null); setQuestion(""); setUsedProvider(null); setUsedModel(null); inputRef.current?.focus() }}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
-              >
-                Ask another question →
-              </button>
-            </div>
-          )}
         </div>
-      )}
-    </div>
+      </div>
+    </>
   )
 }
