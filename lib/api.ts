@@ -138,6 +138,9 @@ export const askPrediction = (payload: {
     season_id?:    number;
     provider?:     string;
     model?:        string;
+    history?:      any[];
+    file_base64?:  string;
+    file_mime?:    string;
 }) =>
     req('/api/predict/ask', {
         method: 'POST',

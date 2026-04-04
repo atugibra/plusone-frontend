@@ -1,6 +1,6 @@
-﻿"use client"
+"use client"
 
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import {
@@ -41,6 +41,10 @@ import {
   Send,
   Sparkles,
   ChevronDown,
+  Paperclip,
+  Image as ImageIcon,
+  X,
+  FileText,
 } from "lucide-react"
 import {
   XAxis,
@@ -1685,7 +1689,7 @@ const GEMINI_MODELS = [
   { id: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite · Fast" },
 ]
 
-type ChatMessage = { role: "user" | "assistant"; content: string }
+type ChatMessage = { role: "user" | "assistant"; content: string; hasAttachment?: boolean; attachmentType?: string }
 
 export function PredictionQA({
   consensusResult,
@@ -1704,12 +1708,33 @@ export function PredictionQA({
   const [selectedModel, setSelectedModel]       = useState(GROQ_MODELS[0].id)
   const [configuredProviders, setConfiguredProviders] = useState<{ groq: boolean; gemini: boolean }>({ groq: true, gemini: true })
 
-  const inputRef  = useRef<HTMLInputElement>(null)
+  const inputRef  = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const [attachment, setAttachment] = useState<{ file: File; base64: string; preview: string | null } | null>(null)
 
   const matchLabel = fixture
     ? `${fixture.home_team ?? fixture.home_name ?? ""} vs ${fixture.away_team ?? fixture.away_name ?? ""}`
     : "this match"
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File is too large (max 5MB)")
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      const b64 = (evt.target?.result as string).split(",")[1]
+      let preview = null
+      if (file.type.startsWith("image/")) {
+        preview = evt.target?.result as string
+      }
+      setAttachment({ file, base64: b64, preview })
+    }
+    reader.readAsDataURL(file)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -1738,19 +1763,28 @@ export function PredictionQA({
   const currentModels = selectedProvider === "groq" ? GROQ_MODELS : GEMINI_MODELS
 
   const handleAsk = async (q: string) => {
-    if (!q.trim() || loading) return
-    const userMsg: ChatMessage = { role: "user", content: q.trim() }
+    if (!q.trim() && !attachment) return
+    if (loading) return
+    const currentAttachmentType = attachment?.file.type.startsWith("image/") ? "image" : "file"
+    const userMsg: ChatMessage = { role: "user", content: q.trim() || "", hasAttachment: !!attachment, attachmentType: currentAttachmentType }
     const updatedHistory = [...history, userMsg]
     setHistory(updatedHistory)
     setQuestion("")
     setLoading(true)
     setError(null)
+    const currentAttachment = attachment
+    setAttachment(null)
+    
     try {
       const payload: any = {
-        question: q.trim(),
+        question: q.trim() || "What can you tell me about the attached file?",
         provider: selectedProvider,
         model:    selectedModel,
         history:  history,
+      }
+      if (currentAttachment) {
+        payload.file_base64 = currentAttachment.base64
+        payload.file_mime = currentAttachment.file.type
       }
       if (fixture?.id && fixture.id !== -1) payload.match_id     = fixture.id
       if (fixture?.home_team_id)            payload.home_team_id = fixture.home_team_id
@@ -1886,6 +1920,12 @@ export function PredictionQA({
                     <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">PlusOne AI</span>
                   </div>
                 )}
+                {msg.hasAttachment && (
+                  <div className="flex items-center gap-1.5 mb-1.5 px-2 py-1 bg-black/10 rounded-md w-fit text-primary-foreground border border-primary-foreground/20">
+                    {msg.attachmentType === "image" ? <ImageIcon className="h-3 w-3 opacity-90" /> : <Paperclip className="h-3 w-3 opacity-90" />}
+                    <span className="text-[10px] font-medium opacity-90">Attached context</span>
+                  </div>
+                )}
                 <p className="whitespace-pre-wrap">{msg.content}</p>
               </div>
             </div>
@@ -1913,20 +1953,62 @@ export function PredictionQA({
         </div>
 
         <div className="shrink-0 border-t border-border px-4 py-3 bg-card">
-          <div className="flex gap-2">
-            <input
+          {attachment && (
+            <div className="flex items-center gap-2 mb-3 p-2 bg-secondary/30 rounded-lg border border-border w-fit max-w-full relative shadow-sm">
+              {attachment.preview ? (
+                <img src={attachment.preview} alt="upload" className="h-8 w-8 object-cover rounded-md border border-border" />
+              ) : (
+                <div className="h-8 w-8 rounded-md bg-secondary flex items-center justify-center border border-border">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </div>
+              )}
+              <div className="flex flex-col flex-1 min-w-0 mr-6">
+                <span className="text-xs font-semibold text-foreground truncate">{attachment.file.name}</span>
+                <span className="text-[10px] text-muted-foreground">{Math.round(attachment.file.size / 1024)} KB</span>
+              </div>
+              <button 
+                onClick={() => setAttachment(null)} 
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                title="Remove attachment"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2 items-end">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center justify-center rounded-xl bg-secondary/30 text-muted-foreground hover:text-foreground hover:bg-secondary w-10 h-10 transition-colors shrink-0 border border-transparent hover:border-border"
+              title="Attach File or Image"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*,.txt,.csv,.json" 
+              onChange={handleFileChange} 
+            />
+            <textarea
               ref={inputRef}
-              type="text"
+              rows={2}
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAsk(question)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                  handleAsk(question)
+                }
+              }}
               placeholder={history.length > 0 ? "Ask a follow-up..." : "Ask anything about this prediction..."}
-              className="flex-1 rounded-xl border border-border bg-secondary/20 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="flex-1 rounded-xl border border-border bg-secondary/20 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none scrollbar-thin"
             />
             <button
               onClick={() => handleAsk(question)}
-              disabled={loading || !question.trim()}
-              className="flex items-center justify-center rounded-xl bg-primary text-primary-foreground w-10 h-10 hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0"
+              disabled={loading || (!question.trim() && !attachment)}
+              className="flex items-center justify-center rounded-xl bg-primary text-primary-foreground w-10 h-10 hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0 shadow-sm"
+              title="Send"
             >
               {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
