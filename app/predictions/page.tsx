@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import {
@@ -141,7 +142,7 @@ export default function PredictionsPage() {
     }
   }, [])
 
-  // â”€â”€ Training with background polling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Training with background polling ───────────────────────────────────────
   // The backend /train endpoint returns immediately (BackgroundTasks).
   // We poll /training-status every 3s until done or error.
   const pollTrainingStatus = async (attempts = 0) => {
@@ -175,7 +176,7 @@ export default function PredictionsPage() {
         const elapsed = status.started_at
           ? Math.round(Date.now() / 1000 - status.started_at)
           : attempts * 3
-        setTrainingMessage(`Training in progressâ€¦ ${elapsed}s elapsed`)
+        setTrainingMessage(`Training in progress... ${elapsed}s elapsed`)
         pollRef.current = setTimeout(() => pollTrainingStatus(attempts + 1), 3000)
       }
     } catch {
@@ -187,20 +188,20 @@ export default function PredictionsPage() {
   const handleTrain = async () => {
     setTraining(true)
     setTrainResult(null)
-    setTrainingMessage("Starting trainingâ€¦")
+    setTrainingMessage("Starting training...")
 
     try {
       const r = await trainPredictionModel()
 
       if (r?.started === false) {
         // Already in progress - just start polling for the running job
-        setTrainingMessage("Training already in progress, polling for updatesâ€¦")
+        setTrainingMessage("Training already in progress, polling for updates...")
         pollRef.current = setTimeout(() => pollTrainingStatus(0), 3000)
         return
       }
 
       // Training kicked off - start polling /training-status
-      setTrainingMessage("Training started in backgroundâ€¦")
+      setTrainingMessage("Training started in background...")
       pollRef.current = setTimeout(() => pollTrainingStatus(0), 3000)
     } catch (err: any) {
       const msg = err?.message || ""
@@ -212,7 +213,7 @@ export default function PredictionsPage() {
       ) {
         // The HTTP/2 connection dropped - training may still have started on the server.
         // Begin polling to find out.
-        setTrainingMessage("Connection dropped - checking if training started on the serverâ€¦")
+        setTrainingMessage("Connection dropped - checking if training started on the server...")
         pollRef.current = setTimeout(() => pollTrainingStatus(0), 5000)
       } else {
         setTrainResult({ success: false, error: "Could not reach backend. Is the server running?" })
@@ -222,7 +223,7 @@ export default function PredictionsPage() {
     }
   }
 
-  // â”€â”€ Fixture prediction with 503 / 422 awareness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Fixture prediction with 503 / 422 awareness ────────────────────────────
   const handlePredictFixture = async (fixture: any) => {
     setPredictingFixture(fixture.id)
     setSelectedFixture(fixture)
@@ -332,7 +333,7 @@ export default function PredictionsPage() {
     setPredictingConsensus(null)
   }
 
-  // â”€â”€ Custom match consensus (team picker, not fixture-based) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Custom match consensus (team picker, not fixture-based) ───────────────
   const handleCustomConsensus = async () => {
     if (!customHome || !customAway) return
     const homeTeam = teams.find((t: any) => String(t.id) === customHome)
@@ -445,7 +446,7 @@ export default function PredictionsPage() {
           />
         </div>
 
-        {/* â”€â”€ ML Prediction Engine Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── ML Prediction Engine Section ─────────────────────────────────── */}
         <div className={`rounded-lg border border-border bg-card mb-6 overflow-hidden ${entryAnim} delay-150`}>
           {/* Engine Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-b border-border">
@@ -460,7 +461,7 @@ export default function PredictionsPage() {
             </div>
             <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
               {engineLoading ? (
-                <span className="text-xs text-muted-foreground animate-pulse">Loading statusâ€¦</span>
+                <span className="text-xs text-muted-foreground animate-pulse">Loading status...</span>
               ) : engineStatus?.model_trained ? (
                 <>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 text-success px-3 py-1 text-xs font-semibold">
@@ -497,7 +498,7 @@ export default function PredictionsPage() {
                 className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${training ? "animate-spin" : ""}`} />
-                {training ? "Trainingâ€¦" : engineStatus?.model_trained ? "Retrain" : "Train Engine"}
+                {training ? "Training..." : engineStatus?.model_trained ? "Retrain" : "Train Engine"}
               </button>
             </div>
           </div>
@@ -523,7 +524,7 @@ export default function PredictionsPage() {
               }`}
             >
               {trainResult.success
-                ? `âœ… Trained on ${trainResult.matches_trained} matches. CV accuracy: ${Math.round(
+                ? `✅ Trained on ${trainResult.matches_trained} matches. CV accuracy: ${Math.round(
                     (trainResult.cv_accuracy || 0) * 100
                   )}% - completed in ${trainResult.elapsed_seconds}s`
                 : `âŒ ${trainResult.error || "Training failed"}`}
@@ -553,7 +554,7 @@ export default function PredictionsPage() {
 
             {fixturesLoading ? (
               <p className="text-sm text-muted-foreground animate-pulse py-4 text-center">
-                Loading fixturesâ€¦
+                Loading fixtures...
               </p>
             ) : displayedFixtures.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">
@@ -610,7 +611,7 @@ export default function PredictionsPage() {
                       ) : (
                         <Play className="h-3 w-3" />
                       )}
-                      {predictingFixture === fx.id ? "Predictingâ€¦" : "Predict"}
+                      {predictingFixture === fx.id ? "Predicting..." : "Predict"}
                     </button>
                   </div>
                 ))}
@@ -749,7 +750,7 @@ export default function PredictionsPage() {
                         <ul className="space-y-2">
                           {fixtureResult.key_factors.map((f: string, i: number) => (
                             <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                              <span className="text-primary mt-0.5 flex-shrink-0">â–¸</span>
+                              <span className="text-primary mt-0.5 flex-shrink-0">▸</span>
                               {f}
                             </li>
                           ))}
@@ -979,7 +980,7 @@ export default function PredictionsPage() {
           )}
         </div>
 
-        {/* â”€â”€ Dynamic Consensus Engine Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Dynamic Consensus Engine Section ──────────────────────────── */}
         <div className={`rounded-lg border border-border bg-card mb-6 overflow-hidden ${entryAnim} delay-250`}>
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-b border-border">
@@ -1023,7 +1024,7 @@ export default function PredictionsPage() {
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Search teamâ€¦"
+                    placeholder="Search team..."
                     value={consensusSearch}
                     onChange={(e: any) => setConsensusSearch(e.target.value)}
                     className="pl-7 pr-3 py-1.5 rounded-lg border border-border bg-secondary/30 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-36"
@@ -1033,7 +1034,7 @@ export default function PredictionsPage() {
             </div>
 
             {fixturesLoading ? (
-              <p className="text-sm text-muted-foreground animate-pulse py-4 text-center">Loading fixturesâ€¦</p>
+              <p className="text-sm text-muted-foreground animate-pulse py-4 text-center">Loading fixtures...</p>
             ) : consensusFixtures.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">No upcoming fixtures. Sync data first.</p>
             ) : (
@@ -1086,14 +1087,14 @@ export default function PredictionsPage() {
                       ) : (
                         <GitMerge className="h-3 w-3" />
                       )}
-                      {predictingConsensus === fx.id ? "Analysingâ€¦" : "Consensus"}
+                      {predictingConsensus === fx.id ? "Analysing..." : "Consensus"}
                     </button>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* â”€â”€ Can't find it? Custom match search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Can't find it? Custom match search ─────────────────────── */}
             <div className="mt-4 rounded-lg border border-dashed border-border bg-secondary/10">
               <button
                 onClick={() => setShowCustomForm((v: boolean) => !v)}
@@ -1103,7 +1104,7 @@ export default function PredictionsPage() {
                   <Search className="h-3.5 w-3.5" />
                   Can't find the match? Search by team
                 </span>
-                <span>{showCustomForm ? "â–²" : "â–¼"}</span>
+                <span>{showCustomForm ? "▲" : "▼"}</span>
               </button>
               {showCustomForm && (
                 <div className="px-4 pb-4 space-y-3">
@@ -1126,7 +1127,7 @@ export default function PredictionsPage() {
                         onChange={(e: any) => setCustomHome(e.target.value)}
                         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                       >
-                        <option value="">Select home teamâ€¦</option>
+                        <option value="">Select home team...</option>
                         {customConsensusTeams.map((t: any) => (
                           <option key={t.id} value={t.id}>{t.name}</option>
                         ))}
@@ -1140,7 +1141,7 @@ export default function PredictionsPage() {
                         onChange={(e: any) => setCustomAway(e.target.value)}
                         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                       >
-                        <option value="">Select away teamâ€¦</option>
+                        <option value="">Select away team...</option>
                         {customConsensusTeams
                           .filter((t: any) => String(t.id) !== customHome)
                           .map((t: any) => (
@@ -1158,7 +1159,7 @@ export default function PredictionsPage() {
                       ) : (
                         <GitMerge className="h-3 w-3" />
                       )}
-                      {customConsensusLoading ? "Analysingâ€¦" : "Run Consensus"}
+                      {customConsensusLoading ? "Analysing..." : "Run Consensus"}
                     </button>
                   </div>
                 </div>
@@ -1307,7 +1308,7 @@ export default function PredictionsPage() {
                             ? "bg-success/10 text-success"
                             : "bg-warning/10 text-warning"
                         }`}>
-                          {wts.source === "dynamic_historical" ? "âš¡ Dynamic" : "Default"}
+                          {wts.source === "dynamic_historical" ? "⚡ Dynamic" : "Default"}
                         </span>
                       </div>
                       <div className="flex rounded-lg overflow-hidden h-7 text-xs font-bold">
@@ -1388,7 +1389,7 @@ export default function PredictionsPage() {
               </h2>
               {resultsLoading ? (
                 <p className="text-sm text-muted-foreground animate-pulse py-8 text-center">
-                  Loading results from Supabaseâ€¦
+                  Loading results from Supabase...
                 </p>
               ) : liveResults.length === 0 ? (
                 <div className="rounded-lg border border-border bg-card p-8 text-center">
@@ -1811,28 +1812,30 @@ export function PredictionQA({
 
   return (
     <>
-      {/* Floating trigger button */}
+      {/* Inline trigger button */}
       <button
         onClick={() => setOpen(true)}
         title="Ask AI about this prediction"
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-3 shadow-lg shadow-primary/30 hover:bg-primary/90 hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-sm"
+        className="flex items-center justify-center gap-2 w-full rounded-xl border border-primary/20 bg-primary/5 text-primary py-3 mt-2 font-semibold hover:bg-primary/10 transition-colors"
       >
         <Sparkles className="h-4 w-4" />
-        Ask AI
+        Ask PlusOne AI
       </button>
 
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      <div
-        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[400px] flex flex-col bg-card border-l border-border shadow-2xl transition-transform duration-300 ease-in-out ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
+      {/* Slide-out panel portaled to document body */}
+      {typeof document !== "undefined" && createPortal(
+        <>
+          {open && (
+            <div
+              className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm"
+              onClick={() => setOpen(false)}
+            />
+          )}
+          <div
+            className={`fixed top-0 right-0 z-[110] h-[100dvh] w-full sm:w-[450px] flex flex-col bg-card border-l border-border shadow-2xl transition-transform duration-300 ease-in-out ${
+              open ? "translate-x-0" : "translate-x-full"
+            }`}
+          >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
@@ -2015,6 +2018,9 @@ export function PredictionQA({
           </div>
         </div>
       </div>
+        </>,
+        document.body
+      )}
     </>
   )
 }
