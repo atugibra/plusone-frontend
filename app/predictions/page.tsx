@@ -167,7 +167,7 @@ export default function PredictionsPage() {
         setTraining(false)
         setTrainingMessage("")
       } else {
-        // Still running â€” compute elapsed time and poll again
+        // Still running - compute elapsed time and poll again
         const elapsed = status.started_at
           ? Math.round(Date.now() / 1000 - status.started_at)
           : attempts * 3
@@ -175,7 +175,7 @@ export default function PredictionsPage() {
         pollRef.current = setTimeout(() => pollTrainingStatus(attempts + 1), 3000)
       }
     } catch {
-      // Network hiccup â€” keep retrying
+      // Network hiccup - keep retrying
       pollRef.current = setTimeout(() => pollTrainingStatus(attempts + 1), 3000)
     }
   }
@@ -189,13 +189,13 @@ export default function PredictionsPage() {
       const r = await trainPredictionModel()
 
       if (r?.started === false) {
-        // Already in progress â€” just start polling for the running job
+        // Already in progress - just start polling for the running job
         setTrainingMessage("Training already in progress, polling for updatesâ€¦")
         pollRef.current = setTimeout(() => pollTrainingStatus(0), 3000)
         return
       }
 
-      // Training kicked off â€” start polling /training-status
+      // Training kicked off - start polling /training-status
       setTrainingMessage("Training started in backgroundâ€¦")
       pollRef.current = setTimeout(() => pollTrainingStatus(0), 3000)
     } catch (err: any) {
@@ -206,9 +206,9 @@ export default function PredictionsPage() {
         msg.includes("Failed to fetch") ||
         msg.includes("NetworkError")
       ) {
-        // The HTTP/2 connection dropped â€” training may still have started on the server.
+        // The HTTP/2 connection dropped - training may still have started on the server.
         // Begin polling to find out.
-        setTrainingMessage("Connection dropped â€” checking if training started on the serverâ€¦")
+        setTrainingMessage("Connection dropped - checking if training started on the serverâ€¦")
         pollRef.current = setTimeout(() => pollTrainingStatus(0), 5000)
       } else {
         setTrainResult({ success: false, error: "Could not reach backend. Is the server running?" })
@@ -242,7 +242,7 @@ export default function PredictionsPage() {
 
         if (status === 503) {
           errorMsg =
-            "Backend is unavailable (503 Service Unavailable). The server may be cold-starting â€” wait ~30 seconds and try again."
+            "Backend is unavailable (503 Service Unavailable). The server may be cold-starting - wait ~30 seconds and try again."
         } else if (status === 422) {
           errorMsg =
             "Model not trained yet. Click 'Train Engine' above, wait for training to complete, then predict."
@@ -265,7 +265,7 @@ export default function PredictionsPage() {
       if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
         setFixtureResult({
           error:
-            "Cannot reach the backend. The server may be sleeping (cold start) â€” wait 30 seconds and try again.",
+            "Cannot reach the backend. The server may be sleeping (cold start) - wait 30 seconds and try again.",
         })
       } else {
         setFixtureResult({ error: "Prediction failed. Train the model first." })
@@ -450,7 +450,7 @@ export default function PredictionsPage() {
               <div>
                 <h2 className="text-base font-bold text-foreground">ML Prediction Engine</h2>
                 <p className="text-xs text-muted-foreground">
-                  XGBoost + Random Forest ensemble â€” trained on historical match data
+                  XGBoost + Random Forest ensemble - trained on historical match data
                 </p>
               </div>
             </div>
@@ -504,7 +504,7 @@ export default function PredictionsPage() {
               <Clock className="h-4 w-4 animate-pulse flex-shrink-0" />
               <span>{trainingMessage}</span>
               <span className="text-xs text-muted-foreground ml-auto hidden sm:inline">
-                Runs in background â€” page will update automatically when done.
+                Runs in background - page will update automatically when done.
               </span>
             </div>
           )}
@@ -521,7 +521,7 @@ export default function PredictionsPage() {
               {trainResult.success
                 ? `âœ… Trained on ${trainResult.matches_trained} matches. CV accuracy: ${Math.round(
                     (trainResult.cv_accuracy || 0) * 100
-                  )}% â€” completed in ${trainResult.elapsed_seconds}s`
+                  )}% - completed in ${trainResult.elapsed_seconds}s`
                 : `âŒ ${trainResult.error || "Training failed"}`}
             </div>
           )}
@@ -531,7 +531,7 @@ export default function PredictionsPage() {
           <div className="px-6 py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
               <h3 className="text-sm font-semibold text-foreground">
-                Upcoming Fixtures â€” Click to Predict
+                Upcoming Fixtures - Click to Predict
               </h3>
               <select
                 value={fixtureLeague}
@@ -583,9 +583,9 @@ export default function PredictionsPage() {
                           {fx.away_team}
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {fx.league} Â·{" "}
+                          {fx.league} ·{" "}
                           {fx.match_date ? new Date(fx.match_date).toLocaleDateString() : "TBD"}
-                          {fx.gameweek ? ` Â· GW${fx.gameweek}` : ""}
+                          {fx.gameweek ? ` · GW${fx.gameweek}` : ""}
                         </p>
                       </div>
                       <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
@@ -986,7 +986,7 @@ export default function PredictionsPage() {
               <div>
                 <h2 className="text-base font-bold text-foreground">Dynamic Consensus Engine</h2>
                 <p className="text-xs text-muted-foreground">
-                  Blends DC + ML + Legacy + Enrichment models â€” weights adapt to historical accuracy
+                  Blends DC + ML + Legacy + Enrichment models - weights adapt to historical accuracy
                 </p>
               </div>
             </div>
@@ -1001,7 +1001,7 @@ export default function PredictionsPage() {
           {/* Fixture Picker */}
           <div className="px-6 py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-              <h3 className="text-sm font-semibold text-foreground">Select Fixture â€” Consensus Predict</h3>
+              <h3 className="text-sm font-semibold text-foreground">Select Fixture - Consensus Predict</h3>
               <div className="flex items-center gap-2">
                 {/* League filter */}
                 <select
@@ -1060,8 +1060,8 @@ export default function PredictionsPage() {
                           {fx.away_team}
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {fx.league} Â· {fx.match_date ? new Date(fx.match_date).toLocaleDateString() : "TBD"}
-                          {fx.gameweek ? ` Â· GW${fx.gameweek}` : ""}
+                          {fx.league} · {fx.match_date ? new Date(fx.match_date).toLocaleDateString() : "TBD"}
+                          {fx.gameweek ? ` · GW${fx.gameweek}` : ""}
                         </p>
                       </div>
                       <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-border bg-card flex items-center justify-center relative">
@@ -1267,7 +1267,7 @@ export default function PredictionsPage() {
                         {(["dc", "ml", "legacy"] as const).map((key) => {
                           const e        = eng[key] ?? {}
                           const labels   = { dc: "Dixon-Coles", ml: "ML Ensemble", legacy: "Legacy Heuristic" }
-                          const outcome  = e.predicted_outcome ?? "â€”"
+                          const outcome  = e.predicted_outcome ?? "-"
                           const outcomeColor =
                             outcome === cs.predicted_outcome ? "text-success" : "text-muted-foreground"
                           return (
@@ -1357,7 +1357,7 @@ export default function PredictionsPage() {
                           )}
                           {mkt.home_xg != null && (
                             <span className="rounded-full px-3 py-1 text-xs font-semibold border border-border bg-secondary/30 text-muted-foreground">
-                              xG {mkt.home_xg} â€“ {mkt.away_xg}
+                              xG {mkt.home_xg} - {mkt.away_xg}
                             </span>
                           )}
                         </div>
@@ -1380,7 +1380,7 @@ export default function PredictionsPage() {
           <div className="w-full lg:w-[400px] shrink-0 flex flex-col gap-6">
             <div>
               <h2 className="text-sm font-semibold text-foreground mb-3">
-                Recent Results â€” From Database
+                Recent Results - From Database
               </h2>
               {resultsLoading ? (
                 <p className="text-sm text-muted-foreground animate-pulse py-8 text-center">
@@ -1421,7 +1421,7 @@ export default function PredictionsPage() {
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <p className="text-xs text-muted-foreground mb-0.5">
-                          {selected.league} Â· {selected.season}
+                          {selected.league} · {selected.season}
                         </p>
                         <h3 className="text-sm font-semibold text-foreground">
                           {selected.home_team} vs {selected.away_team}
@@ -1430,13 +1430,13 @@ export default function PredictionsPage() {
                       {selected.home_score !== null && (
                         <div className="text-right">
                           <p className="text-2xl font-black font-mono text-foreground">
-                            {selected.home_score} â€“ {selected.away_score}
+                            {selected.home_score} - {selected.away_score}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {selected.match_date
                               ? new Date(selected.match_date).toLocaleDateString()
                               : ""}
-                            {selected.gameweek ? ` Â· GW${selected.gameweek}` : ""}
+                            {selected.gameweek ? ` · GW${selected.gameweek}` : ""}
                           </p>
                         </div>
                       )}
@@ -1493,12 +1493,12 @@ export default function PredictionsPage() {
             <div className="rounded-lg border border-border bg-card p-4">
               <h3 className="text-sm font-semibold text-foreground mb-1">Weekly Accuracy Trend</h3>
               <p className="text-xs text-muted-foreground mb-4">
-                Model performance by gameweek â€” from Supabase
+                Model performance by gameweek - from Supabase
               </p>
               {weeklyTrends.length === 0 ? (
                 <div className="flex items-center justify-center h-[200px] rounded-lg bg-secondary/20 border border-dashed border-border">
                   <p className="text-sm text-muted-foreground">
-                    No gameweek data yet â€” sync match data first
+                    No gameweek data yet - sync match data first
                   </p>
                 </div>
               ) : (
@@ -1643,13 +1643,13 @@ function ResultCard({
         </div>
         <div className="text-right">
           <p className="text-lg font-black font-mono text-foreground">
-            {match.home_score} â€“ {match.away_score}
+            {match.home_score} - {match.away_score}
           </p>
         </div>
       </div>
 
       <p className="text-[10px] text-muted-foreground mt-2">
-        {match.league} Â·{" "}
+        {match.league} ·{" "}
         {match.match_date ? new Date(match.match_date).toLocaleDateString() : ""}
       </p>
     </button>
