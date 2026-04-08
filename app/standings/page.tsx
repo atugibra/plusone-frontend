@@ -8,12 +8,7 @@ import { Standing, League, Season } from "@/lib/types"
 import { Filter, ChevronRight, Trophy } from "lucide-react"
 import { TeamLogo } from "@/components/team-logo"
 
-// The only league that shows previous seasons data
-const LEAGUES_WITH_HISTORY = ["2. bundesliga", "2. Bundesliga", "bundesliga 2", "2 bundesliga"]
 
-function isBundesliga2(leagueName: string) {
-    return LEAGUES_WITH_HISTORY.some(k => leagueName?.toLowerCase().includes(k.toLowerCase()))
-}
 
 export default function StandingsPage() {
     const [standings, setStandings] = useState<Standing[]>([])
@@ -63,16 +58,8 @@ export default function StandingsPage() {
             })
     }, [leagueId, seasonId])
 
-    // Determine selected league name for history decision
-    const selectedLeagueName = useMemo(() => {
-        if (!leagueId) return ""
-        return leagues.find((l) => String(l.id) === String(leagueId))?.name || ""
-    }, [leagueId, leagues])
-
-    const showHistory = !leagueId || isBundesliga2(selectedLeagueName)
-
     const current = standings.filter((r) => r.is_current)
-    const previous = showHistory ? standings.filter((r) => !r.is_current) : []
+    const previous = standings.filter((r) => !r.is_current)
 
     const prevGroups = previous.reduce((acc: Record<string, Standing[]>, row) => {
         const key = `${row.league} — ${row.season}`
@@ -133,11 +120,6 @@ export default function StandingsPage() {
                             ))}
                         </select>
                     </div>
-                    {leagueId && !showHistory && (
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/50 rounded-lg px-3 py-2">
-                            <span>Historical data available for 2. Bundesliga only</span>
-                        </div>
-                    )}
                 </div>
 
                 {loading && (
@@ -165,8 +147,8 @@ export default function StandingsPage() {
                     </div>
                 )}
 
-                {/* Previous Seasons — only for 2. Bundesliga */}
-                {showHistory && Object.keys(prevGroups).length > 0 && (
+                {/* Previous Seasons */}
+                {Object.keys(prevGroups).length > 0 && (
                     <div>
                         {current.length > 0 && (
                             <div className="flex items-center gap-4 mb-6">
