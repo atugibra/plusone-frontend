@@ -176,7 +176,7 @@ export default function MarketsPage() {
     const ou = markets?.markets?.over_under ?? {}
     const ah = markets?.markets?.asian_handicap ?? {}
     const cs = markets?.markets?.correct_score ?? []
-    const m1x2 = markets?.markets?.["1x2"] ?? {}
+    const m1x2 = dcPred?.calibrated ?? {}
     const dc = dcPred?.calibrated ?? {}
 
     return (
