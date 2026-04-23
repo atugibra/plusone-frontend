@@ -329,7 +329,7 @@ export default function MarketsPage() {
                                 <PBar label={`${dcPred.away_team} Win`} value={dc.away_win ?? 0} color="bg-info" />
                             </div>
                             <div className="flex items-center justify-center gap-8 rounded-lg bg-secondary/20 border border-border py-4">
-                                <div className="text-center"><p className="text-2xl font-black text-primary">{dcPred.exp_home_goals}</p><p className="text-xs text-muted-foreground">{dcPred.home_team} xG</p></div>
+                                <div className="text-center"><p className="text-2xl font-black text-primary">{dcPred.exp_home_goals}</p><p className="text-xs text-muted-foreground">{dcPred.home_team} exp. goals</p></div>
                                 <div className="text-sm font-bold text-muted-foreground">vs</div>
                                 <div className="text-center"><p className="text-2xl font-black text-info">{dcPred.exp_away_goals}</p><p className="text-xs text-muted-foreground">{dcPred.away_team} xG</p></div>
                             </div>
