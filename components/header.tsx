@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import {
   Activity, BarChart3, TrendingUp, Users, Trophy, Calendar,
   Menu, X, ListOrdered, Shield, Zap, RefreshCw, LineChart,
-  Percent, Sparkles, MessageSquare, Settings, LogIn, LogOut, UserPlus,
+  Percent, Sparkles, MessageSquare, Settings, LogIn, LogOut, UserPlus, Calculator,
 } from "lucide-react"
 import { useState } from "react"
 import { SettingsModal } from "@/components/settings-modal"
@@ -33,6 +33,7 @@ const navLinks: NavLink[] = [
   { href: "/head-to-head",    label: "Head to Head",   icon: Zap,         minPlan: "pro" },
   { href: "/home-away-split", label: "Home-Away Split",icon: Activity,    minPlan: "pro" },
   { href: "/markets",         label: "Markets",        icon: Percent,     minPlan: "pro" },
+  { href: "/advanced-calculator", label: "Calculator", icon: Calculator,  minPlan: "pro" },
   { href: "/sync",            label: "Sync / Data",    icon: RefreshCw,   minPlan: "elite" },
   { href: "/performance",     label: "Performance",    icon: LineChart,   minPlan: "elite" },
   { href: "/feedback",        label: "Feedback",       icon: MessageSquare, minPlan: null },
